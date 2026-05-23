@@ -21,7 +21,7 @@ import { filterRows as filterFn, sortRows as sortFn } from "@/engine/sortFilter"
 interface ToolbarProps {
   state: SpreadsheetState;
   dispatch: (a: SpreadsheetAction) => void;
-  /** Сбросить весь прогресс задания (вызывает родитель). */
+  
   onResetTask: () => void;
 }
 
@@ -67,7 +67,7 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
     dispatch({ type: "highlightCells", addresses, color: null });
   };
 
-  // Если выделена колонка — кнопками сортировки сортируем именно её.
+  
   const activeColKey = (() => {
     if (selection.type === "column") return columns[selection.col]?.key ?? null;
     if (selection.type === "cell") return columns[selection.col]?.key ?? null;

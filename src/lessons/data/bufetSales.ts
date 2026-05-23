@@ -1,10 +1,5 @@
 import type { ColumnDef, RowData } from "@/engine/types";
 
-// Школьный буфет — продажи по дням недели.
-// В этом датасете специально есть очевидная аномалия (Среда = 320):
-// в обычные дни продажи 80–140, а в среду — резкий выброс.
-// Это нужно для задания 3 ("Поиск аномалии").
-
 export const bufetColumns: ColumnDef[] = [
   { key: "day", title: "День", type: "text", width: 140 },
   { key: "buns", title: "Пирожки", type: "number", width: 130, unit: "шт" },

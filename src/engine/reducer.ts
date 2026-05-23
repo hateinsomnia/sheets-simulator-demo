@@ -118,7 +118,7 @@ export function spreadsheetReducer(
       };
     }
     case "selectCell": {
-      // Shift-click — расширяем диапазон от текущего якоря, если он есть.
+      
       if (action.extend && state.selection.type !== "none") {
         const sel = state.selection;
         let anchorRow = action.row;

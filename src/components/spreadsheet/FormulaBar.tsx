@@ -4,23 +4,25 @@ import { useMemo } from "react";
 import { Hash } from "lucide-react";
 import type { SpreadsheetState } from "@/engine/types";
 import { columnLetter } from "@/engine/selection";
+import { filterRows, sortRows } from "@/engine/sortFilter";
 import { formatNumber } from "@/lib/utils";
 
 interface FormulaBarProps {
   state: SpreadsheetState;
 }
 
-/**
- * Полоска под toolbar: показывает адрес активной ячейки (B3) и её значение.
- * Это знакомый паттерн из Excel/Sheets — даёт ребёнку сильный сигнал
- * "сейчас активна именно эта ячейка".
- */
 export function FormulaBar({ state }: FormulaBarProps) {
-  const { selection, rows, columns } = state;
+  const { selection, rows, columns, sort, filter } = state;
+
+  const visibleRows = useMemo(() => {
+    const filterCol = columns.find((c) => c.key === filter.colKey);
+    const sortCol = columns.find((c) => c.key === sort.colKey);
+    return sortRows(filterRows(rows, filterCol, filter.predicate), sortCol, sort.direction);
+  }, [rows, columns, sort, filter]);
 
   const info = useMemo(() => {
     if (selection.type === "cell") {
-      const row = rows[selection.row];
+      const row = visibleRows[selection.row];
       const col = columns[selection.col];
       if (!row || !col) return null;
       const v = row.values[col.key];
@@ -55,11 +57,11 @@ export function FormulaBar({ state }: FormulaBarProps) {
       return {
         addr: `${columnLetter(selection.col)}`,
         title: col?.title ?? "Колонка",
-        value: `${rows.length} строк`,
+        value: `${visibleRows.length} строк`,
       };
     }
     return null;
-  }, [selection, rows, columns]);
+  }, [selection, visibleRows, columns]);
 
   return (
     <div className="flex items-center gap-2 rounded-xl border border-soft-border bg-white px-3 py-2 text-sm shadow-soft">

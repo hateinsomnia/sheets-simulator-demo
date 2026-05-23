@@ -1,15 +1,6 @@
 import type { Lesson } from "./types";
 import { bufetColumns, bufetRows } from "./data/bufetSales";
 
-/**
- * Урок 1 — Знакомство с таблицей.
- * Цель: научить ребёнка различать колонки/строки/ячейки и выделять их.
- *
- * Сценарий:
- *  Шаг 1: выделить колонку "Пирожки" (нажав на её заголовок).
- *  Шаг 2: выделить строку с "Средой".
- *  Шаг 3: выбрать одну конкретную ячейку (Пятница / Выручка).
- */
 export const lesson1: Lesson = {
   id: "lesson-1-navigation",
   badge: "1",
@@ -20,7 +11,7 @@ export const lesson1: Lesson = {
     "Так в школьном буфете считают, сколько чего продали за неделю. Чтобы быстро найти нужное число, важно понимать, где колонка, а где строка.",
   columns: bufetColumns,
   rows: bufetRows,
-  lockedColumns: ["day"], // подпись дня недели — не редактируется
+  lockedColumns: ["day"], 
   steps: [
     {
       id: "s1-col",

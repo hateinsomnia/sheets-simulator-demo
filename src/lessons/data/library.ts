@@ -1,8 +1,5 @@
 import type { ColumnDef, RowData } from "@/engine/types";
 
-// Школьная библиотека: книги, автор, жанр, сколько раз брали.
-// Используется в задании 5 ("Фильтр + вывод"): отфильтровать только "Фантастика".
-
 export const libraryColumns: ColumnDef[] = [
   { key: "title", title: "Название", type: "text", width: 220 },
   { key: "author", title: "Автор", type: "text", width: 180 },

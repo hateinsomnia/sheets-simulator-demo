@@ -5,11 +5,12 @@ import { filterRows, sortRows } from "@/engine/sortFilter";
 
 export interface CheckContext {
   state: SpreadsheetState;
-  /**
-   * Текущий выбранный пользователем option (если шаг — choice).
-   * null значит "ничего не выбрано".
-   */
+  
+
   selectedOptionId: string | null;
+  
+
+  hasCalculated?: boolean;
 }
 
 export interface CheckResult {
@@ -17,12 +18,8 @@ export interface CheckResult {
   reason?: string;
 }
 
-/**
- * Чистая, детерминированная проверка состояния задания.
- * Никаких побочных эффектов — это позволяет нам тестировать checker отдельно.
- */
 export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
-  const { state, selectedOptionId } = ctx;
+  const { state, selectedOptionId, hasCalculated } = ctx;
   const filterCol = state.columns.find((c) => c.key === state.filter.colKey);
   const sortCol = state.columns.find((c) => c.key === state.sort.colKey);
   const visibleRows = sortRows(filterRows(state.rows, filterCol, state.filter.predicate), sortCol, state.sort.direction);
@@ -91,7 +88,7 @@ export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
           };
         }
       }
-      // Проверим, что лишних ячеек тем же цветом не покрашено.
+      
       for (const [k, color] of Object.entries(state.highlights)) {
         if (color === check.color && !need.includes(k)) {
           return { ok: false, reason: "Покрашено лишнее. Сбрось лишние ячейки и оставь только нужные." };
@@ -131,6 +128,35 @@ export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
       }
       if (selectedOptionId !== check.correctOptionId) {
         return { ok: false, reason: "Это не самый точный ответ. Посмотри на данные ещё раз." };
+      }
+      return { ok: true };
+    }
+    case "filledCells": {
+      const col = state.columns.find((c) => c.key === check.colKey);
+      if (!col) return { ok: false, reason: "Не нашёл нужную колонку." };
+      let filled = 0;
+      for (const row of state.rows) {
+        const v = row.values[check.colKey];
+        if (v === null || v === undefined) continue;
+        if (typeof v === "string" && v.trim() === "") continue;
+        filled += 1;
+      }
+      if (filled < check.minCount) {
+        return {
+          ok: false,
+          reason: `Заполни в колонке «${col.title}» хотя бы ${check.minCount} строк${
+            check.minCount === 1 ? "у" : check.minCount < 5 ? "и" : ""
+          }. Сейчас заполнено: ${filled}.`,
+        };
+      }
+      return { ok: true };
+    }
+    case "calculated": {
+      if (!hasCalculated) {
+        return {
+          ok: false,
+          reason: "Нажми кнопку «Рассчитать» над таблицей — таблица сама посчитает твои итоги.",
+        };
       }
       return { ok: true };
     }

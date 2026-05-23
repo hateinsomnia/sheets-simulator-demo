@@ -1,14 +1,6 @@
 import type { Lesson } from "./types";
 import { bufetColumns, bufetRows } from "./data/bufetSales";
 
-/**
- * Урок 2 — Сортировка.
- * Цель: показать, что данные можно упорядочить, чтобы их было легче сравнивать.
- *
- * Сценарий:
- *  Шаг 1: отсортировать "Выручка" по возрастанию (asc).
- *  Шаг 2: переключить ту же колонку на убывание (desc) — увидеть лучший день.
- */
 export const lesson2: Lesson = {
   id: "lesson-2-sorting",
   badge: "2",

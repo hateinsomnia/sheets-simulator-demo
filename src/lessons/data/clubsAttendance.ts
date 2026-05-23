@@ -1,9 +1,5 @@
 import type { ColumnDef, RowData } from "@/engine/types";
 
-// Посещаемость школьных кружков по дням недели.
-// Здесь нужна закономерность: Робототехника стабильно высокая в Пн/Ср/Пт,
-// а Шахматы стабильно высокие во Вт/Чт. Это для задания 4 ("Поиск закономерности").
-
 export const clubsColumns: ColumnDef[] = [
   { key: "club", title: "Кружок", type: "text", width: 170 },
   { key: "mon", title: "Пн", type: "number", width: 90, unit: "чел" },

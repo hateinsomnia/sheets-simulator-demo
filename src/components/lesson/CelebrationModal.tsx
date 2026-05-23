@@ -5,19 +5,15 @@ import { ArrowRight, Sparkles, Trophy } from "lucide-react";
 
 interface CelebrationModalProps {
   open: boolean;
-  /** "lesson" — закончили урок; "course" — закончили все уроки. */
+  
   kind: "lesson" | "course";
   lessonTitle?: string;
-  /** Количество уроков пройдено (для course). */
+  
   totalLessons?: number;
   onContinue: () => void;
   onRestart?: () => void;
 }
 
-/**
- * Модалка-конфирмация: мягкое позитивное подтверждение.
- * Не использует "награды/звёздочки" — фокус на смысле, а не на "наклейках".
- */
 export function CelebrationModal({
   open,
   kind,
@@ -30,7 +26,7 @@ export function CelebrationModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          className="celebration-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -40,10 +36,10 @@ export function CelebrationModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: "spring", duration: 0.45 }}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-panel"
+            className="celebration-modal-card w-full max-w-md rounded-2xl bg-white p-6 shadow-panel"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success-100 text-success-700">
+              <div className="celebration-modal-icon flex h-12 w-12 items-center justify-center rounded-xl bg-success-100 text-success-700">
                 {kind === "course" ? (
                   <Trophy className="h-6 w-6" />
                 ) : (
@@ -51,10 +47,10 @@ export function CelebrationModal({
                 )}
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="celebration-modal-title text-lg font-semibold text-slate-900">
                   {kind === "course" ? "Курс пройден!" : "Задание выполнено"}
                 </h3>
-                <p className="text-sm text-slate-600">
+                <p className="celebration-modal-subtitle text-sm text-slate-600">
                   {kind === "course"
                     ? `Ты прошёл(ла) ${totalLessons ?? 5} заданий и научился(лась) реальным навыкам работы с таблицами.`
                     : lessonTitle
@@ -64,18 +60,18 @@ export function CelebrationModal({
               </div>
             </div>
 
-            <ul className="mt-5 space-y-2 text-sm text-slate-700">
+            <ul className="celebration-modal-list mt-5 space-y-2 text-sm text-slate-700">
               <li className="flex gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
+                <span className="celebration-modal-bullet mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                 Ты учишь те же навыки, что используют аналитики и взрослые на работе.
               </li>
               <li className="flex gap-2">
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
+                <span className="celebration-modal-bullet mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                 Каждый шаг — это часть большого умения «думать данными».
               </li>
               {kind === "course" && (
                 <li className="flex gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
+                  <span className="celebration-modal-bullet mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                   Ты можешь повторить любое задание в любой момент.
                 </li>
               )}
@@ -86,7 +82,7 @@ export function CelebrationModal({
                 <button
                   type="button"
                   onClick={onRestart}
-                  className="rounded-lg border border-soft-border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 focusable"
+                  className="celebration-modal-secondary rounded-lg border border-soft-border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 focusable"
                 >
                   Пройти заново
                 </button>
@@ -94,7 +90,7 @@ export function CelebrationModal({
               <button
                 type="button"
                 onClick={onContinue}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-soft hover:bg-brand-700 focusable"
+                className="celebration-modal-primary inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-soft hover:bg-brand-700 focusable"
               >
                 {kind === "course" ? "Хорошо" : "Продолжить"}
                 <ArrowRight className="h-4 w-4" />

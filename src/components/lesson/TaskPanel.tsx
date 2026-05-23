@@ -21,11 +21,11 @@ interface TaskPanelProps {
   isStepComplete: boolean;
   isLessonComplete: boolean;
   isLastLesson: boolean;
-  /** Сейчас идёт демонстрация (демо-режим). */
+  
   demoActive: boolean;
-  /** Сообщение от системы (успех / мягкая ошибка / null). */
+  
   feedback: { kind: "ok" | "warn"; text: string } | null;
-  /** Выбранный option для choice-шага. */
+  
   selectedOptionId: string | null;
   onSelectOption: (id: string) => void;
   onShowDemo: () => void;
@@ -37,7 +37,7 @@ interface TaskPanelProps {
   onPrevLesson: () => void;
   onNextLesson: () => void;
   onFinish: () => void;
-  /** Подсказка из последнего нажатия "Подсказка". */
+  
   hintText: string | null;
 }
 
@@ -70,7 +70,6 @@ export function TaskPanel(props: TaskPanelProps) {
 
   return (
     <aside className="flex h-full w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-soft-border bg-white p-4 shadow-panel">
-      {/* Шапка панели */}
       <div className="flex items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-sm font-semibold text-brand-700">
           {lesson.badge}
@@ -84,18 +83,15 @@ export function TaskPanel(props: TaskPanelProps) {
         </div>
       </div>
 
-      {/* Реальная польза — вшито прямо в task panel, чтобы ребёнок понимал «зачем» */}
       <div className="rounded-xl bg-brand-50/60 p-3 text-xs text-brand-800">
         <strong className="font-semibold">Зачем это в жизни? </strong>
         {lesson.reallifeNote}
       </div>
 
-      {/* Текущий шаг */}
       <div className="flex-1 overflow-auto scroll-area">
         <h3 className="text-sm font-semibold text-slate-900">{step.title}</h3>
         <p className="mt-1 text-sm leading-relaxed text-slate-700">{step.brief}</p>
 
-        {/* Multiple choice */}
         {isChoice && choice && (
           <div className="mt-3 space-y-1.5">
             {choice.options.map((opt) => (
@@ -109,7 +105,6 @@ export function TaskPanel(props: TaskPanelProps) {
           </div>
         )}
 
-        {/* Подсказка */}
         <AnimatePresence>
           {hintText && (
             <motion.div
@@ -124,7 +119,6 @@ export function TaskPanel(props: TaskPanelProps) {
           )}
         </AnimatePresence>
 
-        {/* Демо-плашка */}
         <AnimatePresence>
           {demoActive && step.demo.callout && (
             <motion.div
@@ -142,7 +136,6 @@ export function TaskPanel(props: TaskPanelProps) {
           )}
         </AnimatePresence>
 
-        {/* Feedback */}
         <AnimatePresence>
           {feedback && (
             <motion.div
@@ -167,7 +160,6 @@ export function TaskPanel(props: TaskPanelProps) {
         </AnimatePresence>
       </div>
 
-      {/* Кнопки действий */}
       <div className="space-y-2">
         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
           <ActionButton

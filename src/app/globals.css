@@ -13,11 +13,11 @@
 
 :root.dark {
   color-scheme: dark;
-  --grid-line: #283346;
-  --header-bg: #182235;
-  --row-stripe: #101827;
-  --selection-bg: rgba(148, 163, 184, 0.15);
-  --selection-border: #94a3b8;
+  --grid-line: #334155;
+  --header-bg: #172033;
+  --row-stripe: #111827;
+  --selection-bg: rgba(96, 165, 250, 0.16);
+  --selection-border: #60a5fa;
 }
 
 html,
@@ -46,11 +46,10 @@ input,
 }
 
 .dark body {
-  background: #0b1120;
+  background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 28rem), #08111f;
   color: #e5e7eb;
 }
 
-/* Сетка таблицы — мягче чем по умолчанию у браузера, ближе к Sheets. */
 .spreadsheet-grid {
   background-color: #ffffff;
   background-image:
@@ -59,36 +58,84 @@ input,
 }
 
 .dark .spreadsheet-grid {
-  background-color: #0f172a;
+  background-color: #0b1220;
 }
 
 .dark [class~="bg-soft-bg"],
 .dark [class~="bg-slate-50"],
 .dark [class~="bg-slate-50/80"],
 .dark [class~="bg-slate-100"] {
-  background-color: #0b1120;
+  background-color: #0b1220;
 }
 
 .dark [class~="bg-white"],
 .dark [class~="bg-white/80"],
 .dark [class~="bg-white/85"],
 .dark [class~="bg-white/95"] {
-  background-color: rgba(15, 23, 42, 0.92);
+  background-color: rgba(15, 23, 42, 0.94);
 }
 
 .dark [class~="bg-brand-50"],
 .dark [class~="bg-brand-50/40"],
 .dark [class~="bg-brand-50/60"] {
-  background-color: rgba(30, 64, 175, 0.24);
+  background-color: rgba(37, 99, 235, 0.16);
 }
 
 .dark [class~="bg-brand-100"] {
-  background-color: rgba(37, 99, 235, 0.24);
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.dark [class~="bg-yellow-100"],
+.dark [class~="bg-yellow-200"] {
+  background-color: rgba(202, 138, 4, 0.28);
+}
+
+.dark [class~="bg-emerald-100"],
+.dark [class~="bg-emerald-200"] {
+  background-color: rgba(5, 150, 105, 0.26);
+}
+
+.dark [class~="bg-rose-100"],
+.dark [class~="bg-rose-200"],
+.dark [class~="bg-rose-50"] {
+  background-color: rgba(225, 29, 72, 0.18);
+}
+
+.dark [class~="bg-sky-100"],
+.dark [class~="bg-sky-200"] {
+  background-color: rgba(14, 165, 233, 0.22);
+}
+
+.dark [class~="bg-amber-50"] {
+  background-color: rgba(180, 83, 9, 0.18);
+}
+
+.dark [class~="bg-success-50"] {
+  background-color: rgba(22, 163, 74, 0.18);
 }
 
 .dark [class~="border-soft-border"],
-.dark [class~="border-slate-200"] {
-  border-color: #263248;
+.dark [class~="border-slate-200"],
+.dark [class~="border-slate-300"] {
+  border-color: #2f3b52;
+}
+
+.dark [class~="border-brand-200"],
+.dark [class~="border-brand-300"],
+.dark [class~="border-brand-400"] {
+  border-color: rgba(96, 165, 250, 0.5);
+}
+
+.dark [class~="border-amber-200"] {
+  border-color: rgba(251, 191, 36, 0.38);
+}
+
+.dark [class~="border-rose-200"] {
+  border-color: rgba(248, 113, 113, 0.34);
+}
+
+.dark [class~="border-success-100"] {
+  border-color: rgba(74, 222, 128, 0.34);
 }
 
 .dark [class~="text-slate-900"],
@@ -108,12 +155,96 @@ input,
   color: #bfdbfe;
 }
 
-.dark [class~="shadow-soft"],
-.dark [class~="shadow-panel"] {
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+.dark [class~="text-amber-900"] {
+  color: #fde68a;
 }
 
-/* Скроллбары — аккуратные. */
+.dark [class~="text-rose-800"] {
+  color: #fecaca;
+}
+
+.dark [class~="text-success-700"] {
+  color: #bbf7d0;
+}
+
+.dark [class~="hover:bg-white"]:hover,
+.dark [class~="hover:bg-slate-50"]:hover,
+.dark [class~="hover:bg-slate-100"]:hover,
+.dark [class~="hover:bg-slate-200"]:hover {
+  background-color: rgba(30, 41, 59, 0.95);
+}
+
+.dark [class~="hover:bg-brand-50"]:hover,
+.dark [class~="hover:bg-brand-50/40"]:hover,
+.dark [class~="hover:bg-brand-50/60"]:hover {
+  background-color: rgba(37, 99, 235, 0.24);
+}
+
+.dark input {
+  background-color: #0b1220;
+  color: #e5e7eb;
+  border-color: #3b82f6;
+}
+
+.dark ::selection {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+.dark .celebration-modal-backdrop {
+  background-color: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.dark .celebration-modal-card {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 16rem),
+    rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+}
+
+.dark .celebration-modal-icon {
+  background-color: rgba(16, 185, 129, 0.14);
+  color: #86efac;
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.26);
+}
+
+.dark .celebration-modal-title {
+  color: #f8fafc;
+}
+
+.dark .celebration-modal-subtitle {
+  color: #94a3b8;
+}
+
+.dark .celebration-modal-list {
+  color: #d1d5db;
+}
+
+.dark .celebration-modal-bullet {
+  background-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.12);
+}
+
+.dark .celebration-modal-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+
+.dark .celebration-modal-primary:hover {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.dark .celebration-modal-secondary {
+  background-color: rgba(15, 23, 42, 0.7);
+  color: #cbd5e1;
+}
+
+.dark [class~="shadow-soft"],
+.dark [class~="shadow-panel"] {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
+}
+
 .scroll-area::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -135,14 +266,12 @@ input,
   border-color: #0f172a;
 }
 
-/* Базовый focus ring для интерактивных элементов. */
 .focusable:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
   border-color: #3b82f6;
 }
 
-/* Для overlay подсветки таргетов туториала. */
 .tutorial-ring {
   position: absolute;
   pointer-events: none;
@@ -152,7 +281,6 @@ input,
   z-index: 40;
 }
 
-/* "Дрожащая" точка-подсказка рядом с целевой кнопкой. */
 .pulse-dot {
   position: absolute;
   width: 14px;

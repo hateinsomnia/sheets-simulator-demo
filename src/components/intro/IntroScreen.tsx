@@ -8,12 +8,6 @@ interface IntroScreenProps {
   onStartFreeMode: () => void;
 }
 
-/**
- * Onboarding-экран. Цель — за 30 секунд дать ребёнку:
- *   1) понимание, что таблица состоит из строк/колонок/ячеек;
- *   2) понимание, зачем это в реальной жизни;
- *   3) ясный CTA "Начать урок".
- */
 export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
   return (
     <div className="mx-auto flex min-h-[100vh] w-full max-w-5xl flex-col items-center justify-center px-6 py-10">
@@ -29,8 +23,9 @@ export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
             <span className="text-brand-600">как настоящие аналитики</span>
           </h1>
           <p className="mt-4 max-w-2xl text-balance text-base text-slate-600 sm:text-lg">
-            За 5 коротких заданий ты научишься выделять данные, сортировать, искать аномалии,
-            замечать закономерности и делать выводы — на примерах из жизни.
+            За 6 коротких заданий ты научишься выделять данные, сортировать, искать аномалии,
+            замечать закономерности, фильтровать и составишь свою первую таблицу-бюджет —
+            на примерах из жизни.
           </p>
         </div>
 
@@ -112,7 +107,7 @@ export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
           <button
             type="button"
             onClick={onStartFreeMode}
-            className="group inline-flex items-center gap-2 rounded-xl border border-soft-border bg-white px-6 py-3 text-base font-semibold text-slate-700 shadow-soft transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800 focusable"
+            className="group inline-flex items-center gap-2 rounded-xl border border-soft-border bg-white px-6 py-3 text-base font-semibold text-slate-700 shadow-soft transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800 focusable"
           >
             <MousePointer2 className="h-4 w-4 transition group-hover:rotate-[-8deg]" />
             Свободный режим

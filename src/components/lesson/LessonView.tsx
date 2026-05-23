@@ -8,6 +8,7 @@ import { FormulaBar } from "@/components/spreadsheet/FormulaBar";
 import { TaskPanel } from "@/components/lesson/TaskPanel";
 import { ProgressBar } from "@/components/lesson/ProgressBar";
 import { CelebrationModal } from "@/components/lesson/CelebrationModal";
+import { BudgetCalculator } from "@/components/lesson/BudgetCalculator";
 import { HighlightOverlay } from "@/components/highlight/HighlightOverlay";
 import {
   createInitialState,
@@ -21,37 +22,33 @@ interface LessonViewProps {
   onBackToIntro: () => void;
 }
 
-/**
- * Главный экран тренажёра: progress bar сверху, таблица в центре,
- * task panel справа. Этот компонент держит весь "урочный" state:
- *   - текущий урок и шаг;
- *   - кэш пройденных уроков;
- *   - демо-режим, фидбек, выбранный choice.
- */
 export function LessonView({ onBackToIntro }: LessonViewProps) {
-  // Текущий урок.
+  
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const lesson: Lesson = lessons[currentLessonIndex];
 
-  // Состояние таблицы для текущего урока. При смене урока пересоздаём.
+  
   const [state, dispatch] = useReducer(
     spreadsheetReducer,
     lesson,
     (l) => createInitialState(l.columns, l.rows, l.lockedColumns ?? []),
   );
 
-  // Состояние шагов и завершённых уроков.
+  
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepCompletedMap, setStepCompletedMap] = useState<Record<string, boolean>>({});
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
 
-  // UX-состояния.
+  
   const [demoActive, setDemoActive] = useState(false);
-  const [demoTargetsKey, setDemoTargetsKey] = useState(0); // форс-обновление overlay
+  const [demoTargetsKey, setDemoTargetsKey] = useState(0); 
   const [feedback, setFeedback] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
   const [hintText, setHintText] = useState<string | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<null | { kind: "lesson" | "course" }>(null);
+  
+
+  const [hasCalculated, setHasCalculated] = useState(false);
 
   const step = lesson.steps[currentStepIndex];
   const stepCompleteKey = `${currentLessonIndex}:${currentStepIndex}`;
@@ -61,9 +58,9 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
   );
   const isLastLesson = currentLessonIndex === lessons.length - 1;
 
-  // ========================================================================
-  // Сброс таблицы при переходе на другой урок.
-  // ========================================================================
+  
+  
+  
   useEffect(() => {
     dispatch({
       type: "loadDataset",
@@ -75,14 +72,15 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     setHintText(null);
     setDemoActive(false);
     setSelectedOptionId(null);
-    // currentStepIndex намеренно НЕ сбрасываем тут — он управляется отдельно
-    // (например, при возврате к предыдущему уроку мы ставим его на 0).
+    setHasCalculated(false);
+    
+    
   }, [lesson]);
 
-  // ========================================================================
-  // Демо-режим: показываем подсветку и пример состояния таблицы (highlights),
-  // потом откатываем демо-эффект.
-  // ========================================================================
+  
+  
+  
+  
   const demoTimerRef = useRef<number | null>(null);
   const demoSnapshotRef = useRef<{
     highlights: typeof state.highlights;
@@ -98,16 +96,16 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
     const sd = step.demo.spreadsheetDemo;
     if (sd) {
-      // Снэпшот текущих подсветок/выделения, чтобы откатить.
+      
       demoSnapshotRef.current = {
         highlights: { ...state.highlights },
         selection: state.selection,
       };
-      // 1) cells
+      
       if (sd.cells && sd.color) {
         dispatch({ type: "highlightCells", addresses: sd.cells, color: sd.color });
       }
-      // 2) rows
+      
       if (sd.rowIds && sd.color) {
         const idxs = sd.rowIds
           .map((id) => lesson.rows.findIndex((r) => r.id === id))
@@ -116,7 +114,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
           dispatch({ type: "selectRow", row: rowIdx });
         });
       }
-      // 3) cols
+      
       if (sd.colKeys && sd.color) {
         const cidxs = sd.colKeys
           .map((k) => lesson.columns.findIndex((c) => c.key === k))
@@ -129,14 +127,14 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
     if (demoTimerRef.current) window.clearTimeout(demoTimerRef.current);
     demoTimerRef.current = window.setTimeout(() => {
-      // Откатываем демо-эффект таблицы (highlights/selection),
-      // но overlay-targets оставляем — пусть направляют ребёнка на действие.
+      
+      
       const snap = demoSnapshotRef.current;
       if (snap) {
         dispatch({ type: "clearHighlights" });
         const entries = Object.entries(snap.highlights);
         if (entries.length > 0) {
-          // Восстанавливаем как одну операцию.
+          
           for (const [k, color] of entries) {
             const [rowId, colKey] = k.split("|");
             if (color) {
@@ -162,9 +160,9 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     };
   }, []);
 
-  // ========================================================================
-  // Кнопки task panel.
-  // ========================================================================
+  
+  
+  
   const handleShowHint = useCallback(() => {
     setHintText(step.hint);
   }, [step]);
@@ -173,7 +171,8 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     dispatch({ type: "resetState" });
     setFeedback(null);
     setSelectedOptionId(null);
-    // Для текущего урока обнуляем только текущий шаг (мягкий сброс).
+    setHasCalculated(false);
+    
     setStepCompletedMap((prev) => {
       const next = { ...prev };
       delete next[stepCompleteKey];
@@ -182,7 +181,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
   }, [stepCompleteKey]);
 
   const handleCheck = useCallback(() => {
-    const result = runCheck(step.check, { state, selectedOptionId });
+    const result = runCheck(step.check, { state, selectedOptionId, hasCalculated });
     if (result.ok) {
       setFeedback({ kind: "ok", text: step.successMessage });
       setStepCompletedMap((prev) => ({ ...prev, [stepCompleteKey]: true }));
@@ -192,7 +191,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
         text: result.reason ?? "Чуть-чуть не то. Попробуй ещё раз — или нажми «Подсказка».",
       });
     }
-  }, [step, state, selectedOptionId, stepCompleteKey]);
+  }, [step, state, selectedOptionId, hasCalculated, stepCompleteKey]);
 
   const handleNextStep = useCallback(() => {
     if (currentStepIndex < lesson.steps.length - 1) {
@@ -222,7 +221,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     (idx: number) => {
       if (idx === currentLessonIndex) return;
       setCurrentLessonIndex(idx);
-      // На уже пройденный урок возвращаемся в начало (как в большинстве курсов).
+      
       setCurrentStepIndex(0);
     },
     [currentLessonIndex],
@@ -260,10 +259,10 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     setCompletedLessons([]);
   }, []);
 
-  // Highlight targets для overlay — только во время демо.
-  // demoTargetsKey намеренно влияет на пересчёт, поэтому читаем его здесь
-  // и используем в зависимостях (даже если ESLint считает, что значение
-  // не используется напрямую — пересчёт мемо нужен именно по нему).
+  
+  
+  
+  
   const overlayTargets = useMemo(() => {
     void demoTargetsKey;
     if (!demoActive) return [];
@@ -272,7 +271,6 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
   return (
     <div className="flex h-screen w-full flex-col bg-soft-bg">
-      {/* ===== Top bar ===== */}
       <header className="flex flex-col gap-3 border-b border-soft-border bg-white/80 px-4 py-3 backdrop-blur md:flex-row md:items-center md:gap-4">
         <button
           type="button"
@@ -295,18 +293,27 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
         </div>
       </header>
 
-      {/* ===== Body ===== */}
       <main className="flex flex-1 gap-4 overflow-hidden p-4">
-        {/* Левая колонка — таблица + toolbar */}
         <section className="flex min-w-0 flex-1 flex-col gap-2">
           <Toolbar state={state} dispatch={dispatch} onResetTask={handleResetTask} />
           <FormulaBar state={state} />
+          {lesson.budgetCalculator && (
+            <BudgetCalculator
+              config={lesson.budgetCalculator}
+              state={state}
+              hasCalculated={hasCalculated}
+              onCalculate={() => setHasCalculated(true)}
+            />
+          )}
           <div className="min-h-0 flex-1">
-            <Spreadsheet state={state} dispatch={dispatch} />
+            <Spreadsheet
+              state={state}
+              dispatch={dispatch}
+              allowColumnRename={!!lesson.allowColumnRename}
+            />
           </div>
         </section>
 
-        {/* Правая колонка — task panel */}
         <TaskPanel
           lesson={lesson}
           currentStepIndex={currentStepIndex}
@@ -331,10 +338,8 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
         />
       </main>
 
-      {/* Highlight overlay поверх всего */}
       <HighlightOverlay targets={overlayTargets} />
 
-      {/* Праздничный модал по итогу урока / курса */}
       <CelebrationModal
         open={!!celebration}
         kind={celebration?.kind ?? "lesson"}

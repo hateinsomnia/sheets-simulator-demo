@@ -6,12 +6,6 @@ import { IntroScreen } from "@/components/intro/IntroScreen";
 import { LessonView } from "@/components/lesson/LessonView";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
-/**
- * Корневая страница тренажёра.
- * Управляет переключением между:
- *   - intro-экраном (онбординг);
- *   - основным экраном тренажёра (LessonView).
- */
 export default function HomePage() {
   const [screen, setScreen] = useState<"intro" | "lesson" | "free">("intro");
 
@@ -30,14 +24,12 @@ export default function HomePage() {
     return (
       <>
         <FreeModeView onBackToIntro={() => setScreen("intro")} />
-        <ThemeToggle />
       </>
     );
   }
   return (
     <>
       <LessonView onBackToIntro={() => setScreen("intro")} />
-      <ThemeToggle />
     </>
   );
 }

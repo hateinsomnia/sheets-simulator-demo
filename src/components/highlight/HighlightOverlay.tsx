@@ -5,7 +5,7 @@ import type { HighlightTarget } from "@/lessons/types";
 
 interface HighlightOverlayProps {
   targets: HighlightTarget[];
-  /** Если true — overlay не пропускает клики (фокусирует ребёнка на цели). */
+  
   blocking?: boolean;
 }
 
@@ -17,13 +17,6 @@ interface Rect {
   label?: string;
 }
 
-/**
- * Overlay, который рисует пульсирующее кольцо вокруг указанных DOM-элементов.
- * Принципы:
- *  - элементы находим по data-tutorial-id или произвольному CSS selector;
- *  - на resize/scroll пересчитываем координаты;
- *  - overlay не блокирует клики по самой цели (только подсвечивает).
- */
 export function HighlightOverlay({ targets, blocking = false }: HighlightOverlayProps) {
   const [rects, setRects] = useState<Rect[]>([]);
 
@@ -52,7 +45,7 @@ export function HighlightOverlay({ targets, blocking = false }: HighlightOverlay
     const onResize = () => compute();
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onResize, true);
-    const id = window.setInterval(compute, 400); // дешёвый rAF-подобный пересчёт
+    const id = window.setInterval(compute, 400); 
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onResize, true);
@@ -99,14 +92,14 @@ function resolveTarget(t: HighlightTarget): Element | null {
     return document.querySelector(`[data-tutorial-id='row-header-${t.rowIndex}']`);
   }
   if (t.kind === "cell") {
-    // Для конкретной ячейки нужно знать DOM-зону. Простой путь — через aria-rowindex
-    // и порядок gridcell. Но проще отдельно подсветить через spreadsheetDemo (highlights).
-    // Здесь используем эвристику через шапку колонки (label стоит над колонкой).
+    
+    
+    
     const grid = document.querySelector("[role='grid']");
     if (!grid) return null;
     const rowEl = grid.querySelector(`[role='row'][aria-rowindex='${t.rowIndex + 1}']`);
     if (!rowEl) return null;
-    // Внутри row первый child — RowHeader, дальше идут gridcell в порядке колонок.
+    
     const cells = rowEl.querySelectorAll("[role='gridcell']");
     return cells[t.colIndex] ?? null;
   }

@@ -34,10 +34,12 @@ const HIGHLIGHT_COLORS: Record<NonNullable<CellHighlight>, string> = {
   blue: "bg-sky-100",
 };
 
+const MAX_NUMBER_CELL_VALUE = 1_000_000;
+
 export function Spreadsheet({ state, dispatch, allowColumnRename = false }: SpreadsheetProps) {
   const { columns, rows, selection, sort, filter, highlights, editing } = state;
 
-  // Видимые строки = после фильтра, потом сортировки.
+  
   const visibleRows = useMemo(() => {
     const filterCol = columns.find((c) => c.key === filter.colKey);
     const sortCol = columns.find((c) => c.key === sort.colKey);
@@ -58,7 +60,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
     return () => window.clearTimeout(id);
   }, [clipboardStatus]);
 
-  // -------- Drag selection (mouse) --------
+  
   const draggingRef = useRef(false);
   const fillDragRef = useRef<{ r1: number; r2: number; c1: number; c2: number } | null>(null);
   const fillTargetRef = useRef<{ row: number; col: number } | null>(null);
@@ -72,8 +74,8 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
       } else {
         dispatch({ type: "selectCell", row, col });
       }
-      // preventDefault блокирует автоматический перевод фокуса —
-      // переводим его сами, чтобы стрелки на клавиатуре работали сразу.
+      
+      
       containerRef.current?.focus({ preventScroll: true });
     },
     [dispatch],
@@ -87,13 +89,13 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
         return;
       }
       if (!draggingRef.current) return;
-      // Расширяем диапазон при перетаскивании.
+      
       dispatch({ type: "selectCell", row, col, extend: true });
     },
     [dispatch],
   );
 
-  // -------- Keyboard navigation --------
+  
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const selectionText = useCallback(() => {
@@ -280,7 +282,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
         anchorRow = selection.range.anchorRow;
         anchorCol = selection.range.anchorCol;
       } else {
-        // Если ничего не выделено — встаём в (0,0).
+        
         dispatch({ type: "selectCell", row: 0, col: 0 });
         return;
       }
@@ -300,15 +302,15 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (editing) return; // во время редактирования стрелки уходят в input
+      if (editing) return; 
       const key = e.key.toLowerCase();
       if (e.ctrlKey || e.metaKey) {
-        if (key === "z") {
+        if (isUndoShortcut(e)) {
           e.preventDefault();
           dispatch({ type: e.shiftKey ? "redo" : "undo" });
           return;
         }
-        if (key === "y") {
+        if (isRedoShortcut(e)) {
           e.preventDefault();
           dispatch({ type: "redo" });
           return;
@@ -398,7 +400,25 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
     ],
   );
 
-  // Открывать/закрывать панельку фильтра.
+  useEffect(() => {
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || (!e.ctrlKey && !e.metaKey)) return;
+      if (isTextEntryTarget(e.target)) return;
+      if (isUndoShortcut(e)) {
+        e.preventDefault();
+        dispatch({ type: e.shiftKey ? "redo" : "undo" });
+      }
+      if (isRedoShortcut(e)) {
+        e.preventDefault();
+        dispatch({ type: "redo" });
+      }
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => window.removeEventListener("keydown", handleWindowKeyDown);
+  }, [dispatch]);
+
+  
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
 
   return (
@@ -415,7 +435,6 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
       className="focusable relative h-full w-full overflow-auto rounded-xl border border-soft-border bg-white shadow-soft scroll-area"
     >
       <div className="min-w-max">
-        {/* ===== Шапка колонок ===== */}
         <div className="sticky top-0 z-20 flex bg-[var(--header-bg)]">
           <CornerCell />
           {columns.map((col, ci) => (
@@ -459,7 +478,6 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
           ))}
         </div>
 
-        {/* ===== Тело ===== */}
         <div className="spreadsheet-grid">
           {visibleRows.map((row, ri) => {
             const rowSelected =
@@ -679,7 +697,11 @@ function parseClipboardValue(raw: string, col: ColumnDef): CellValue {
   if (col.type !== "number") return raw;
   const normalized = raw.replace(/\s/g, "").replace(",", ".");
   const n = Number(normalized);
-  return Number.isFinite(n) ? n : raw;
+  return Number.isFinite(n) ? clampNumberCellValue(n) : raw;
+}
+
+function clampNumberCellValue(value: number): number {
+  return Math.max(-MAX_NUMBER_CELL_VALUE, Math.min(MAX_NUMBER_CELL_VALUE, value));
 }
 
 function nextSeriesValue(values: CellValue[], index: number): CellValue {
@@ -722,9 +744,22 @@ function formatSeriesDate(date: Date): string {
   return `${dd}.${mm}.${yy}`;
 }
 
-// ============================================================================
-// Корнер (пересечение шапок).
-// ============================================================================
+function isTextEntryTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || target.isContentEditable;
+}
+
+function isUndoShortcut(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  const key = e.key.toLowerCase();
+  return key === "z" || e.code === "KeyZ";
+}
+
+function isRedoShortcut(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  const key = e.key.toLowerCase();
+  return key === "y" || e.code === "KeyY";
+}
+
 function CornerCell() {
   return (
     <div
@@ -734,9 +769,6 @@ function CornerCell() {
   );
 }
 
-// ============================================================================
-// Заголовок колонки: буква (A,B,C…) + название + фильтр + resize.
-// ============================================================================
 interface ColumnHeaderProps {
   col: ColumnDef;
   colIndex: number;
@@ -780,6 +812,8 @@ function ColumnHeader(props: ColumnHeaderProps) {
     setDraftTitle(col.title);
   }, [col.title]);
 
+  const hasTitle = col.title.trim().length > 0;
+
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -808,7 +842,6 @@ function ColumnHeader(props: ColumnHeaderProps) {
       style={{ width: col.width }}
       data-tutorial-id={`col-header-${col.key}`}
     >
-      {/* Верхняя строка: буква колонки */}
       <div
         className={cn(
           "flex h-5 select-none items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-soft-muted transition-colors duration-150 ease-out",
@@ -818,7 +851,6 @@ function ColumnHeader(props: ColumnHeaderProps) {
       >
         {columnLetter(colIndex)}
       </div>
-      {/* Нижняя строка: название + фильтр */}
       <div
         className={cn(
           "group flex h-9 cursor-pointer select-none items-center gap-1 px-2 text-sm font-medium transition-colors duration-150 ease-out",
@@ -834,11 +866,13 @@ function ColumnHeader(props: ColumnHeaderProps) {
           e.stopPropagation();
           setRenaming(true);
         }}
-        title={col.title}
+        title={allowRename ? "Дважды кликни, чтобы назвать колонку" : col.title}
       >
-        {renaming ? (
+        {renaming || (allowRename && !hasTitle) ? (
           <input
             value={draftTitle}
+            placeholder="Назвать колонку"
+            aria-label="Название колонки"
             onChange={(e) => setDraftTitle(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
@@ -849,7 +883,8 @@ function ColumnHeader(props: ColumnHeaderProps) {
               }
             }}
             onClick={(e) => e.stopPropagation()}
-            autoFocus
+            onDoubleClick={(e) => e.stopPropagation()}
+            autoFocus={renaming}
             className="min-w-0 flex-1 rounded border border-brand-300 bg-white px-1 py-0.5 text-sm text-slate-900 outline-none ring-2 ring-brand-100"
           />
         ) : (
@@ -877,14 +912,12 @@ function ColumnHeader(props: ColumnHeaderProps) {
         </button>
       </div>
 
-      {/* Ручка ресайза */}
       <div
         onMouseDown={startResize}
         className="absolute right-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-brand-400/50"
         aria-hidden
       />
 
-      {/* Поповер фильтра */}
       {isFilterOpen && (
         <div
           className="absolute left-0 top-full z-40 mt-1 w-56 animate-fadeIn rounded-lg border border-soft-border bg-white p-2 shadow-panel"
@@ -938,9 +971,6 @@ function ColumnHeader(props: ColumnHeaderProps) {
   );
 }
 
-// ============================================================================
-// RowHeader — номер строки.
-// ============================================================================
 function RowHeader({
   index,
   selected,
@@ -970,9 +1000,6 @@ function RowHeader({
   );
 }
 
-// ============================================================================
-// Cell — одна ячейка с inline-редактированием.
-// ============================================================================
 interface CellProps {
   row: number;
   col: number;
@@ -1115,7 +1142,7 @@ function CellEditor({
         onCommit(v, moveNext);
         return;
       }
-      onCommit(n, moveNext);
+      onCommit(clampNumberCellValue(n), moveNext);
     } else {
       onCommit(v, moveNext);
     }

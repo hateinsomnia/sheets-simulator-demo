@@ -29,7 +29,7 @@ export function isCellSelected(
       return row >= r1 && row <= r2 && col >= c1 && col <= c2;
     }
     default:
-      // Защита от расширения типа в будущем.
+      
       void totalRows;
       void totalCols;
       return false;
@@ -46,10 +46,6 @@ export function isCellActive(selection: SelectionKind, row: number, col: number)
   return false;
 }
 
-/**
- * Возвращает все индексы ячеек (row,col), входящих в выделение.
- * Используется системой проверки заданий.
- */
 export function selectionToCells(
   sel: SelectionKind,
   totalRows: number,
@@ -67,7 +63,7 @@ export function selectionToCells(
     for (let r = 0; r < totalRows; r++) list.push({ row: r, col: sel.col });
     return list;
   }
-  // range
+  
   const { r1, r2, c1, c2 } = normalizeRange(sel.range);
   const list: Array<{ row: number; col: number }> = [];
   for (let r = r1; r <= r2; r++) {
@@ -79,7 +75,7 @@ export function selectionToCells(
 }
 
 export function columnLetter(index: number): string {
-  // 0 -> A, 25 -> Z, 26 -> AA. Достаточно для учебной таблицы.
+  
   let n = index;
   let s = "";
   while (n >= 0) {

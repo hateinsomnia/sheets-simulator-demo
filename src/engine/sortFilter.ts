@@ -15,7 +15,7 @@ export function sortRows(
   copy.sort((a, b) => {
     const av = a.values[column.key];
     const bv = b.values[column.key];
-    // null всегда уезжает в конец.
+    
     if (av === null || av === undefined) return 1;
     if (bv === null || bv === undefined) return -1;
     if (column.type === "number") {
