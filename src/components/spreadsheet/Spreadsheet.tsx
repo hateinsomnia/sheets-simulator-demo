@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Filter, X } from "lucide-react";
+import { Clipboard, Filter, X } from "lucide-react";
 import type {
   CellHighlight,
   CellValue,
   ColumnDef,
   RowData,
   SelectionKind,
-  SortDirection,
   SpreadsheetState,
 } from "@/engine/types";
 import {
@@ -16,6 +15,7 @@ import {
   isCellActive,
   isCellSelected,
   normalizeRange,
+  selectionToCells,
 } from "@/engine/selection";
 import { sortRows as sortFn, filterRows as filterFn } from "@/engine/sortFilter";
 import type { SpreadsheetAction } from "@/engine/reducer";
@@ -24,6 +24,7 @@ import { cn, formatNumber } from "@/lib/utils";
 interface SpreadsheetProps {
   state: SpreadsheetState;
   dispatch: (a: SpreadsheetAction) => void;
+  allowColumnRename?: boolean;
 }
 
 const HIGHLIGHT_COLORS: Record<NonNullable<CellHighlight>, string> = {
@@ -33,7 +34,7 @@ const HIGHLIGHT_COLORS: Record<NonNullable<CellHighlight>, string> = {
   blue: "bg-sky-100",
 };
 
-export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
+export function Spreadsheet({ state, dispatch, allowColumnRename = false }: SpreadsheetProps) {
   const { columns, rows, selection, sort, filter, highlights, editing } = state;
 
   // Видимые строки = после фильтра, потом сортировки.
@@ -47,9 +48,20 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
 
   const totalRows = visibleRows.length;
   const totalCols = columns.length;
+  const [clipboardStatus, setClipboardStatus] = useState<string | null>(null);
+  const [fillPreview, setFillPreview] = useState<{ r1: number; r2: number; c1: number; c2: number } | null>(null);
+  const [editSeed, setEditSeed] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clipboardStatus) return;
+    const id = window.setTimeout(() => setClipboardStatus(null), 1400);
+    return () => window.clearTimeout(id);
+  }, [clipboardStatus]);
 
   // -------- Drag selection (mouse) --------
   const draggingRef = useRef(false);
+  const fillDragRef = useRef<{ r1: number; r2: number; c1: number; c2: number } | null>(null);
+  const fillTargetRef = useRef<{ row: number; col: number } | null>(null);
 
   const handleCellMouseDown = useCallback(
     (row: number, col: number, e: React.MouseEvent) => {
@@ -69,6 +81,11 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
 
   const handleCellMouseEnter = useCallback(
     (row: number, col: number) => {
+      if (fillDragRef.current) {
+        fillTargetRef.current = { row, col };
+        setFillPreview(fillPreviewBounds(fillDragRef.current, row, col));
+        return;
+      }
       if (!draggingRef.current) return;
       // Расширяем диапазон при перетаскивании.
       dispatch({ type: "selectCell", row, col, extend: true });
@@ -76,16 +93,175 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
     [dispatch],
   );
 
+  // -------- Keyboard navigation --------
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const selectionText = useCallback(() => {
+    const bounds = selectionToBounds(selection, totalRows, totalCols);
+    if (!bounds) return null;
+    const lines: string[] = [];
+    for (let r = bounds.r1; r <= bounds.r2; r++) {
+      const row = visibleRows[r];
+      if (!row) continue;
+      const values: string[] = [];
+      for (let c = bounds.c1; c <= bounds.c2; c++) {
+        const col = columns[c];
+        values.push(col ? String(row.values[col.key] ?? "") : "");
+      }
+      lines.push(values.join("\t"));
+    }
+    return lines.join("\n");
+  }, [selection, totalRows, totalCols, visibleRows, columns]);
+
+  const clearSelectionValues = useCallback(() => {
+    const updates: Array<{ rowId: string; colKey: string; value: CellValue }> = [];
+    for (const { row, col } of selectionToCells(selection, totalRows, totalCols)) {
+      const rowData = visibleRows[row];
+      const column = columns[col];
+      if (!rowData || !column || state.lockedColumns.includes(column.key)) continue;
+      updates.push({ rowId: rowData.id, colKey: column.key, value: null });
+    }
+    if (updates.length > 0) {
+      dispatch({ type: "setCells", updates });
+      setClipboardStatus("Очищено");
+    }
+  }, [selection, totalRows, totalCols, visibleRows, columns, state.lockedColumns, dispatch]);
+
+  const pasteText = useCallback((text: string) => {
+    const anchor = selectionAnchor(selection);
+    if (!anchor) return;
+    const rawRows = text.replace(/\r/g, "").split("\n");
+    if (rawRows[rawRows.length - 1] === "") rawRows.pop();
+    const matrix = rawRows.map((line) => line.split("\t"));
+    const updates: Array<{ rowId: string; colKey: string; value: CellValue }> = [];
+    for (let r = 0; r < matrix.length; r++) {
+      const rowData = visibleRows[anchor.row + r];
+      if (!rowData) continue;
+      for (let c = 0; c < matrix[r].length; c++) {
+        const column = columns[anchor.col + c];
+        if (!column || state.lockedColumns.includes(column.key)) continue;
+        updates.push({
+          rowId: rowData.id,
+          colKey: column.key,
+          value: parseClipboardValue(matrix[r][c], column),
+        });
+      }
+    }
+    if (updates.length > 0) {
+      dispatch({ type: "setCells", updates });
+      setClipboardStatus(`Вставлено: ${updates.length}`);
+    }
+  }, [selection, visibleRows, columns, state.lockedColumns, dispatch]);
+
+  const startFill = useCallback(
+    (e: React.MouseEvent) => {
+      const bounds = selectionToBounds(selection, totalRows, totalCols);
+      if (!bounds) return;
+      e.preventDefault();
+      e.stopPropagation();
+      draggingRef.current = false;
+      fillDragRef.current = bounds;
+      fillTargetRef.current = { row: bounds.r2, col: bounds.c2 };
+      setFillPreview(null);
+    },
+    [selection, totalRows, totalCols],
+  );
+
+  const applyFill = useCallback(() => {
+    const source = fillDragRef.current;
+    const target = fillTargetRef.current;
+    fillDragRef.current = null;
+    fillTargetRef.current = null;
+    setFillPreview(null);
+    if (!source || !target) return;
+    const updates: Array<{ rowId: string; colKey: string; value: CellValue }> = [];
+    if (target.row > source.r2) {
+      for (let c = source.c1; c <= source.c2; c++) {
+        const column = columns[c];
+        if (!column || state.lockedColumns.includes(column.key)) continue;
+        const sourceValues: CellValue[] = [];
+        for (let r = source.r1; r <= source.r2; r++) {
+          sourceValues.push(visibleRows[r]?.values[column.key] ?? null);
+        }
+        for (let r = source.r2 + 1; r <= target.row; r++) {
+          const rowData = visibleRows[r];
+          if (!rowData) continue;
+          updates.push({ rowId: rowData.id, colKey: column.key, value: nextSeriesValue(sourceValues, r - source.r1) });
+        }
+      }
+      dispatch({
+        type: "selectRange",
+        range: { anchorRow: source.r1, anchorCol: source.c1, focusRow: target.row, focusCol: source.c2 },
+      });
+    } else if (target.col > source.c2) {
+      for (let r = source.r1; r <= source.r2; r++) {
+        const rowData = visibleRows[r];
+        if (!rowData) continue;
+        const sourceValues: CellValue[] = [];
+        for (let c = source.c1; c <= source.c2; c++) {
+          const column = columns[c];
+          sourceValues.push(column ? rowData.values[column.key] ?? null : null);
+        }
+        for (let c = source.c2 + 1; c <= target.col; c++) {
+          const column = columns[c];
+          if (!column || state.lockedColumns.includes(column.key)) continue;
+          updates.push({ rowId: rowData.id, colKey: column.key, value: nextSeriesValue(sourceValues, c - source.c1) });
+        }
+      }
+      dispatch({
+        type: "selectRange",
+        range: { anchorRow: source.r1, anchorCol: source.c1, focusRow: source.r2, focusCol: target.col },
+      });
+    }
+    if (updates.length > 0) {
+      dispatch({ type: "setCells", updates });
+      setClipboardStatus(`Заполнено: ${updates.length}`);
+    }
+  }, [columns, visibleRows, state.lockedColumns, dispatch]);
+
   useEffect(() => {
     const stop = () => {
       draggingRef.current = false;
+      applyFill();
     };
     window.addEventListener("mouseup", stop);
     return () => window.removeEventListener("mouseup", stop);
-  }, []);
+  }, [applyFill]);
 
-  // -------- Keyboard navigation --------
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const handleCopy = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      if (editing) return;
+      const text = selectionText();
+      if (text === null) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", text);
+      setClipboardStatus("Скопировано");
+    },
+    [editing, selectionText],
+  );
+
+  const handleCut = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      if (editing) return;
+      const text = selectionText();
+      if (text === null) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", text);
+      clearSelectionValues();
+    },
+    [editing, selectionText, clearSelectionValues],
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      if (editing) return;
+      const text = e.clipboardData.getData("text/plain");
+      if (!text) return;
+      e.preventDefault();
+      pasteText(text);
+    },
+    [editing, pasteText],
+  );
 
   const moveActive = useCallback(
     (dr: number, dc: number, extend: boolean) => {
@@ -125,6 +301,39 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (editing) return; // во время редактирования стрелки уходят в input
+      const key = e.key.toLowerCase();
+      if (e.ctrlKey || e.metaKey) {
+        if (key === "z") {
+          e.preventDefault();
+          dispatch({ type: e.shiftKey ? "redo" : "undo" });
+          return;
+        }
+        if (key === "y") {
+          e.preventDefault();
+          dispatch({ type: "redo" });
+          return;
+        }
+        if (key === "a") {
+          e.preventDefault();
+          if (totalRows > 0 && totalCols > 0) {
+            dispatch({
+              type: "selectRange",
+              range: { anchorRow: 0, anchorCol: 0, focusRow: totalRows - 1, focusCol: totalCols - 1 },
+            });
+          }
+          return;
+        }
+      }
+      if (!e.altKey && !e.ctrlKey && !e.metaKey && key.length === 1 && selection.type === "cell") {
+        const row = visibleRows[selection.row];
+        const col = columns[selection.col];
+        if (row && col && !state.lockedColumns.includes(col.key)) {
+          e.preventDefault();
+          setEditSeed(e.key);
+          dispatch({ type: "startEdit", rowId: row.id, colKey: col.key });
+        }
+        return;
+      }
       const ext = e.shiftKey;
       switch (e.key) {
         case "ArrowUp":
@@ -147,32 +356,46 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
         case "Escape":
           dispatch({ type: "clearSelection" });
           break;
+        case "Delete":
+          e.preventDefault();
+          clearSelectionValues();
+          break;
+        case "Backspace":
+          if (selection.type === "cell") {
+            const row = visibleRows[selection.row];
+            const col = columns[selection.col];
+            if (row && col && !state.lockedColumns.includes(col.key)) {
+              e.preventDefault();
+              setEditSeed("");
+              dispatch({ type: "startEdit", rowId: row.id, colKey: col.key });
+            }
+          }
+          break;
         case "Enter":
           if (selection.type === "cell") {
             const row = visibleRows[selection.row];
             const col = columns[selection.col];
             if (row && col) {
+              e.preventDefault();
+              setEditSeed(null);
               dispatch({ type: "startEdit", rowId: row.id, colKey: col.key });
             }
           }
           break;
       }
     },
-    [editing, moveActive, dispatch, selection, visibleRows, columns],
-  );
-
-  // Sort toggle via header chevron.
-  const toggleSort = useCallback(
-    (colKey: string) => {
-      if (sort.colKey !== colKey) {
-        dispatch({ type: "setSort", colKey, direction: "asc" });
-        return;
-      }
-      const next: SortDirection =
-        sort.direction === "asc" ? "desc" : sort.direction === "desc" ? null : "asc";
-      dispatch({ type: "setSort", colKey: next ? colKey : null, direction: next });
-    },
-    [sort, dispatch],
+    [
+      editing,
+      totalRows,
+      totalCols,
+      dispatch,
+      clearSelectionValues,
+      moveActive,
+      selection,
+      visibleRows,
+      columns,
+      state.lockedColumns,
+    ],
   );
 
   // Открывать/закрывать панельку фильтра.
@@ -186,6 +409,9 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
       aria-rowcount={totalRows}
       aria-colcount={totalCols}
       onKeyDown={handleKeyDown}
+      onCopy={handleCopy}
+      onCut={handleCut}
+      onPaste={handlePaste}
       className="focusable relative h-full w-full overflow-auto rounded-xl border border-soft-border bg-white shadow-soft scroll-area"
     >
       <div className="min-w-max">
@@ -201,10 +427,8 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
                 selection.type === "column" && selection.col === ci
               }
               isInRange={isColumnTouchedBySelection(selection, ci)}
-              sortDirection={sort.colKey === col.key ? sort.direction : null}
               filterActive={filter.colKey === col.key && !!filter.predicate}
               onSelectColumn={() => dispatch({ type: "selectColumn", col: ci })}
-              onToggleSort={() => toggleSort(col.key)}
               onResize={(w) =>
                 dispatch({ type: "setColumnWidth", colKey: col.key, width: w })
               }
@@ -217,6 +441,8 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
                   : null
               }
               uniqueValues={uniqueColumnValues(rows, col)}
+              allowRename={allowColumnRename}
+              onRename={(title) => dispatch({ type: "renameColumn", colKey: col.key, title })}
               onApplyFilter={(value) => {
                 if (value === null) {
                   dispatch({ type: "setFilter", colKey: null, predicate: null });
@@ -251,6 +477,12 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
                   const value = row.values[col.key] ?? null;
                   const selected = isCellSelected(selection, ri, ci, totalRows, totalCols);
                   const active = isCellActive(selection, ri, ci);
+                  const selectionEdges = selected
+                    ? getSelectionEdges(selection, ri, ci, totalRows, totalCols)
+                    : null;
+                  const previewEdges = fillPreview && isCellInBounds(fillPreview, ri, ci)
+                    ? getBoundsEdges(fillPreview, ri, ci)
+                    : null;
                   const highlightKey = `${row.id}|${col.key}`;
                   const highlight = highlights[highlightKey] ?? null;
                   const isEditing =
@@ -266,6 +498,8 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
                       value={value}
                       selected={selected}
                       active={active}
+                      selectionEdges={selectionEdges}
+                      previewEdges={previewEdges}
                       highlight={highlight}
                       editing={isEditing}
                       locked={state.lockedColumns.includes(col.key)}
@@ -276,10 +510,22 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
                           dispatch({ type: "startEdit", rowId: row.id, colKey: col.key });
                         }
                       }}
-                      onCommit={(v) =>
-                        dispatch({ type: "commitEdit", rowId: row.id, colKey: col.key, value: v })
-                      }
-                      onCancel={() => dispatch({ type: "cancelEdit" })}
+                      onFillStart={startFill}
+                      editSeed={isEditing ? editSeed : null}
+                      onCommit={(v: CellValue, moveNext: boolean) => {
+                        dispatch({ type: "commitEdit", rowId: row.id, colKey: col.key, value: v });
+                        setEditSeed(null);
+                        if (moveNext) {
+                          dispatch({ type: "selectCell", row: Math.min(totalRows - 1, ri + 1), col: ci });
+                          window.requestAnimationFrame(() => {
+                            containerRef.current?.focus({ preventScroll: true });
+                          });
+                        }
+                      }}
+                      onCancel={() => {
+                        setEditSeed(null);
+                        dispatch({ type: "cancelEdit" });
+                      }}
                     />
                   );
                 })}
@@ -293,6 +539,12 @@ export function Spreadsheet({ state, dispatch }: SpreadsheetProps) {
           )}
         </div>
       </div>
+      {clipboardStatus && (
+        <div className="pointer-events-none absolute right-3 top-3 z-50 inline-flex items-center gap-1.5 rounded-full border border-soft-border bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-panel backdrop-blur animate-fadeIn">
+          <Clipboard className="h-3.5 w-3.5 text-brand-600" />
+          {clipboardStatus}
+        </div>
+      )}
     </div>
   );
 }
@@ -317,6 +569,51 @@ function isRowTouchedBySelection(sel: SelectionKind, row: number): boolean {
   return false;
 }
 
+interface SelectionEdges {
+  top: boolean;
+  right: boolean;
+  bottom: boolean;
+  left: boolean;
+}
+
+function getSelectionEdges(
+  sel: SelectionKind,
+  row: number,
+  col: number,
+  totalRows: number,
+  totalCols: number,
+): SelectionEdges {
+  if (sel.type === "cell") {
+    return { top: true, right: true, bottom: true, left: true };
+  }
+  if (sel.type === "row") {
+    return {
+      top: true,
+      right: col === totalCols - 1,
+      bottom: true,
+      left: col === 0,
+    };
+  }
+  if (sel.type === "column") {
+    return {
+      top: row === 0,
+      right: true,
+      bottom: row === totalRows - 1,
+      left: true,
+    };
+  }
+  if (sel.type === "range") {
+    const { r1, r2, c1, c2 } = normalizeRange(sel.range);
+    return {
+      top: row === r1,
+      right: col === c2,
+      bottom: row === r2,
+      left: col === c1,
+    };
+  }
+  return { top: false, right: false, bottom: false, left: false };
+}
+
 function uniqueColumnValues(rows: RowData[], col: ColumnDef): Array<string | number> {
   const set = new Set<string | number>();
   for (const r of rows) {
@@ -325,6 +622,104 @@ function uniqueColumnValues(rows: RowData[], col: ColumnDef): Array<string | num
     set.add(v);
   }
   return Array.from(set);
+}
+
+function selectionToBounds(sel: SelectionKind, totalRows: number, totalCols: number) {
+  if (totalRows <= 0 || totalCols <= 0 || sel.type === "none") return null;
+  if (sel.type === "cell") return { r1: sel.row, r2: sel.row, c1: sel.col, c2: sel.col };
+  if (sel.type === "row") return { r1: sel.row, r2: sel.row, c1: 0, c2: totalCols - 1 };
+  if (sel.type === "column") return { r1: 0, r2: totalRows - 1, c1: sel.col, c2: sel.col };
+  return normalizeRange(sel.range);
+}
+
+function fillPreviewBounds(
+  source: { r1: number; r2: number; c1: number; c2: number },
+  row: number,
+  col: number,
+) {
+  if (row > source.r2) return { r1: source.r1, r2: row, c1: source.c1, c2: source.c2 };
+  if (col > source.c2) return { r1: source.r1, r2: source.r2, c1: source.c1, c2: col };
+  return null;
+}
+
+function isCellInBounds(
+  bounds: { r1: number; r2: number; c1: number; c2: number },
+  row: number,
+  col: number,
+) {
+  return row >= bounds.r1 && row <= bounds.r2 && col >= bounds.c1 && col <= bounds.c2;
+}
+
+function getBoundsEdges(
+  bounds: { r1: number; r2: number; c1: number; c2: number },
+  row: number,
+  col: number,
+): SelectionEdges {
+  return {
+    top: row === bounds.r1,
+    right: col === bounds.c2,
+    bottom: row === bounds.r2,
+    left: col === bounds.c1,
+  };
+}
+
+function selectionAnchor(sel: SelectionKind) {
+  if (sel.type === "cell") return { row: sel.row, col: sel.col };
+  if (sel.type === "range") {
+    const { r1, c1 } = normalizeRange(sel.range);
+    return { row: r1, col: c1 };
+  }
+  if (sel.type === "row") return { row: sel.row, col: 0 };
+  if (sel.type === "column") return { row: 0, col: sel.col };
+  return null;
+}
+
+function parseClipboardValue(raw: string, col: ColumnDef): CellValue {
+  if (raw === "") return null;
+  if (col.type !== "number") return raw;
+  const normalized = raw.replace(/\s/g, "").replace(",", ".");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : raw;
+}
+
+function nextSeriesValue(values: CellValue[], index: number): CellValue {
+  const filled = values.filter((v) => v !== null && v !== "");
+  if (filled.length === 0) return null;
+  const dates = filled.map((v) => parseSeriesDate(String(v)));
+  if (dates.every((d) => d !== null)) {
+    const last = dates[dates.length - 1] as Date;
+    const prev = dates.length > 1 ? (dates[dates.length - 2] as Date) : null;
+    const step = prev ? last.getTime() - prev.getTime() : 24 * 60 * 60 * 1000;
+    const next = new Date(last.getTime() + step * (index - values.length + 1));
+    return formatSeriesDate(next);
+  }
+  const nums = filled.map((v) => Number(String(v).replace(",", ".")));
+  if (nums.every(Number.isFinite)) {
+    const last = nums[nums.length - 1];
+    const prev = nums.length > 1 ? nums[nums.length - 2] : null;
+    const step = prev === null ? 1 : last - prev;
+    return last + step * (index - values.length + 1);
+  }
+  return filled[(index - values.length) % filled.length] ?? null;
+}
+
+function parseSeriesDate(raw: string): Date | null {
+  const m = raw.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const yearRaw = Number(m[3]);
+  const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function formatSeriesDate(date: Date): string {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${dd}.${mm}.${yy}`;
 }
 
 // ============================================================================
@@ -340,23 +735,23 @@ function CornerCell() {
 }
 
 // ============================================================================
-// Заголовок колонки: буква (A,B,C…) + название + сортировка + фильтр + resize.
+// Заголовок колонки: буква (A,B,C…) + название + фильтр + resize.
 // ============================================================================
 interface ColumnHeaderProps {
   col: ColumnDef;
   colIndex: number;
   isSelected: boolean;
   isInRange: boolean;
-  sortDirection: SortDirection;
   filterActive: boolean;
   onSelectColumn: () => void;
-  onToggleSort: () => void;
   onResize: (width: number) => void;
   onOpenFilter: () => void;
   onCloseFilter: () => void;
   isFilterOpen: boolean;
   currentFilterValue: string | null;
   uniqueValues: Array<string | number>;
+  allowRename: boolean;
+  onRename: (title: string) => void;
   onApplyFilter: (value: string | number | null) => void;
 }
 
@@ -366,18 +761,24 @@ function ColumnHeader(props: ColumnHeaderProps) {
     colIndex,
     isSelected,
     isInRange,
-    sortDirection,
     filterActive,
     onSelectColumn,
-    onToggleSort,
     onResize,
     onOpenFilter,
     onCloseFilter,
     isFilterOpen,
     currentFilterValue,
     uniqueValues,
+    allowRename,
+    onRename,
     onApplyFilter,
   } = props;
+  const [renaming, setRenaming] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(col.title);
+
+  useEffect(() => {
+    setDraftTitle(col.title);
+  }, [col.title]);
 
   const startResize = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -395,6 +796,12 @@ function ColumnHeader(props: ColumnHeaderProps) {
     window.addEventListener("mouseup", onUp);
   };
 
+  const commitRename = () => {
+    const next = draftTitle.trim();
+    if (next && next !== col.title) onRename(next);
+    setRenaming(false);
+  };
+
   return (
     <div
       className="relative shrink-0 border-b border-r border-soft-border"
@@ -404,17 +811,17 @@ function ColumnHeader(props: ColumnHeaderProps) {
       {/* Верхняя строка: буква колонки */}
       <div
         className={cn(
-          "flex h-5 select-none items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-soft-muted",
+          "flex h-5 select-none items-center justify-center text-[10px] font-semibold uppercase tracking-wide text-soft-muted transition-colors duration-150 ease-out",
           isSelected && "bg-brand-500 text-white",
           !isSelected && isInRange && "bg-brand-100 text-brand-700",
         )}
       >
         {columnLetter(colIndex)}
       </div>
-      {/* Нижняя строка: название + сортировка + фильтр */}
+      {/* Нижняя строка: название + фильтр */}
       <div
         className={cn(
-          "group flex h-9 cursor-pointer select-none items-center gap-1 px-2 text-sm font-medium",
+          "group flex h-9 cursor-pointer select-none items-center gap-1 px-2 text-sm font-medium transition-colors duration-150 ease-out",
           isSelected
             ? "bg-brand-500 text-white"
             : isInRange
@@ -422,35 +829,39 @@ function ColumnHeader(props: ColumnHeaderProps) {
               : "bg-[var(--header-bg)] text-slate-700 hover:bg-slate-100",
         )}
         onClick={onSelectColumn}
+        onDoubleClick={(e) => {
+          if (!allowRename) return;
+          e.stopPropagation();
+          setRenaming(true);
+        }}
         title={col.title}
       >
-        <span className="truncate">{col.title}</span>
+        {renaming ? (
+          <input
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") {
+                setDraftTitle(col.title);
+                setRenaming(false);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+            className="min-w-0 flex-1 rounded border border-brand-300 bg-white px-1 py-0.5 text-sm text-slate-900 outline-none ring-2 ring-brand-100"
+          />
+        ) : (
+          <span className="truncate">{col.title}</span>
+        )}
         <button
           type="button"
-          aria-label="Сортировать"
-          className={cn(
-            "ml-auto rounded p-1 transition",
-            isSelected ? "hover:bg-white/20" : "hover:bg-slate-200",
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSort();
-          }}
-        >
-          {sortDirection === "asc" ? (
-            <ArrowUp className="h-3.5 w-3.5" />
-          ) : sortDirection === "desc" ? (
-            <ArrowDown className="h-3.5 w-3.5" />
-          ) : (
-            <ArrowUpDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100" />
-          )}
-        </button>
-        <button
-          type="button"
-          aria-label="Фильтр"
+          aria-label={`Открыть фильтр по «${col.title}»`}
+          title={`Открыть фильтр по «${col.title}»`}
           data-tutorial-id={`filter-${col.key}`}
           className={cn(
-            "rounded p-1 transition",
+            "ml-auto rounded p-1 transition",
             filterActive
               ? "bg-brand-100 text-brand-700"
               : isSelected
@@ -546,7 +957,7 @@ function RowHeader({
       onClick={onSelect}
       data-tutorial-id={`row-header-${index - 1}`}
       className={cn(
-        "sticky left-0 z-10 flex h-9 w-12 shrink-0 cursor-pointer select-none items-center justify-center border-b border-r border-soft-border text-xs font-semibold",
+        "sticky left-0 z-10 flex h-9 w-12 shrink-0 cursor-pointer select-none items-center justify-center border-b border-r border-soft-border text-xs font-semibold transition-colors duration-150 ease-out",
         selected
           ? "bg-brand-500 text-white"
           : inRange
@@ -571,13 +982,17 @@ interface CellProps {
   value: CellValue;
   selected: boolean;
   active: boolean;
+  selectionEdges: SelectionEdges | null;
+  previewEdges: SelectionEdges | null;
   highlight: CellHighlight;
   editing: boolean;
   locked: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
   onMouseEnter: () => void;
   onDoubleClick: () => void;
-  onCommit: (value: CellValue) => void;
+  onFillStart: (e: React.MouseEvent) => void;
+  editSeed: string | null;
+  onCommit: (value: CellValue, moveNext: boolean) => void;
   onCancel: () => void;
 }
 
@@ -589,12 +1004,16 @@ function Cell(props: CellProps) {
     value,
     selected,
     active,
+    selectionEdges,
+    previewEdges,
     highlight,
     editing,
     locked,
     onMouseDown,
     onMouseEnter,
     onDoubleClick,
+    onFillStart,
+    editSeed,
     onCommit,
     onCancel,
   } = props;
@@ -613,16 +1032,52 @@ function Cell(props: CellProps) {
       onDoubleClick={onDoubleClick}
       style={{ width }}
       className={cn(
-        "relative flex h-9 shrink-0 items-center border-b border-r border-soft-border px-2 text-sm",
+        "relative flex h-9 shrink-0 cursor-cell items-center border-b border-r border-soft-border px-2 text-sm transition-[background-color,border-color,box-shadow,color] duration-150 ease-out",
         type === "number" ? "justify-end tabular-nums text-slate-800" : "justify-start text-slate-800",
         highlight && HIGHLIGHT_COLORS[highlight],
         selected && !active && "bg-[var(--selection-bg)]",
-        active && "z-10 ring-2 ring-[var(--selection-border)] ring-offset-0",
+        active && "z-10",
         locked && "text-slate-500",
       )}
     >
+      {selectionEdges && (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 z-10 opacity-95 transition-[border-color,opacity,box-shadow] duration-150 ease-out",
+            selectionEdges.top && "border-t-2 border-[var(--selection-border)]",
+            selectionEdges.right && "border-r-2 border-[var(--selection-border)]",
+            selectionEdges.bottom && "border-b-2 border-[var(--selection-border)]",
+            selectionEdges.left && "border-l-2 border-[var(--selection-border)]",
+          )}
+        />
+      )}
+      {previewEdges && (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[12] bg-slate-400/10 transition-[background-color,box-shadow,border-color] duration-200 ease-out",
+            previewEdges.top && "border-t-2 border-dashed border-slate-500/70",
+            previewEdges.right && "border-r-2 border-dashed border-slate-500/70",
+            previewEdges.bottom && "border-b-2 border-dashed border-slate-500/70",
+            previewEdges.left && "border-l-2 border-dashed border-slate-500/70",
+          )}
+        />
+      )}
+      <div
+        className={cn(
+          "pointer-events-none absolute -inset-px z-20 rounded-[2px] border-2 border-[var(--selection-border)] shadow-[0_0_0_1px_rgba(71,85,105,0.2),0_2px_8px_rgba(71,85,105,0.1)] transition-[opacity,transform,box-shadow] duration-150 ease-out",
+          active ? "scale-100 opacity-100" : "scale-[0.985] opacity-0",
+        )}
+      />
+      {active && !editing && (
+        <button
+          type="button"
+          aria-label="Автозаполнение"
+          onMouseDown={onFillStart}
+          className="absolute -bottom-1.5 -right-1.5 z-30 h-2.5 w-2.5 cursor-crosshair rounded-sm border border-white bg-[var(--selection-border)] p-0 shadow-sm transition duration-150 ease-out hover:scale-125 hover:shadow-[0_0_0_4px_rgba(71,85,105,0.18)] active:scale-110"
+        />
+      )}
       {editing ? (
-        <CellEditor initialValue={value} type={type} onCommit={onCommit} onCancel={onCancel} />
+        <CellEditor initialValue={value} editSeed={editSeed} type={type} onCommit={onCommit} onCancel={onCancel} />
       ) : (
         <span className="truncate">{display}</span>
       )}
@@ -632,31 +1087,37 @@ function Cell(props: CellProps) {
 
 function CellEditor({
   initialValue,
+  editSeed,
   type,
   onCommit,
   onCancel,
 }: {
   initialValue: CellValue;
+  editSeed: string | null;
   type: ColumnDef["type"];
-  onCommit: (v: CellValue) => void;
+  onCommit: (v: CellValue, moveNext: boolean) => void;
   onCancel: () => void;
 }) {
-  const [v, setV] = useState<string>(initialValue === null ? "" : String(initialValue));
+  const [v, setV] = useState<string>(editSeed ?? (initialValue === null ? "" : String(initialValue)));
   const ref = useRef<HTMLInputElement | null>(null);
+  const committedRef = useRef(false);
   useEffect(() => {
     ref.current?.focus();
-    ref.current?.select();
+    const len = ref.current?.value.length ?? 0;
+    ref.current?.setSelectionRange(len, len);
   }, []);
-  const commit = () => {
+  const commit = (moveNext: boolean) => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     if (type === "number") {
       const n = Number(v.replace(",", "."));
       if (!Number.isFinite(n)) {
-        onCancel();
+        onCommit(v, moveNext);
         return;
       }
-      onCommit(n);
+      onCommit(n, moveNext);
     } else {
-      onCommit(v);
+      onCommit(v, moveNext);
     }
   };
   return (
@@ -664,12 +1125,12 @@ function CellEditor({
       ref={ref}
       value={v}
       onChange={(e) => setV(e.target.value)}
-      onBlur={commit}
+      onBlur={() => commit(false)}
       onKeyDown={(e) => {
-        if (e.key === "Enter") commit();
+        if (e.key === "Enter") commit(true);
         if (e.key === "Escape") onCancel();
       }}
-      className="h-7 w-full rounded border border-brand-400 bg-white px-1 text-sm outline-none ring-2 ring-brand-200"
+      className="relative z-30 h-full w-full border-0 bg-transparent p-0 text-sm text-inherit outline-none ring-0"
     />
   );
 }

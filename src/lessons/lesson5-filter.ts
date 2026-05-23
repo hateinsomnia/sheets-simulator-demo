@@ -64,10 +64,10 @@ export const lesson5: Lesson = {
   finalChoice: {
     prompt: "Какая книга самая популярная среди фантастики?",
     options: [
-      { id: "robot", label: "«Робот и мальчик» — 21 раз" },
-      { id: "star", label: "«Звёздный путь» — 18 раз" },
-      { id: "house", label: "«Тайна старого дома» — 12 раз" },
-      { id: "diary", label: "«Космический дневник» — 10 раз" },
+      { id: "robot", label: "«Робот и мальчик»" },
+      { id: "star", label: "«Звёздный путь»" },
+      { id: "house", label: "«Тайна старого дома»" },
+      { id: "diary", label: "«Космический дневник»" },
     ],
     correctOptionId: "robot",
     explanation:

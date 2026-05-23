@@ -169,7 +169,7 @@ export function TaskPanel(props: TaskPanelProps) {
 
       {/* Кнопки действий */}
       <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-2">
           <ActionButton
             kind="ghost"
             icon={<Play className="h-4 w-4" />}
@@ -194,7 +194,7 @@ export function TaskPanel(props: TaskPanelProps) {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
           <ActionButton
             kind="secondary"
             icon={<ArrowLeft className="h-4 w-4" />}
@@ -296,13 +296,13 @@ function ActionButton({
       disabled={disabled}
       data-tutorial-id={tutorialId}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition focusable",
+        "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition focusable",
         kind === "primary" &&
-          "bg-brand-600 text-white shadow-soft hover:bg-brand-700 disabled:bg-slate-300",
+          "bg-brand-600 text-white shadow-md shadow-brand-500/20 hover:bg-brand-700 disabled:bg-slate-300 disabled:shadow-none",
         kind === "secondary" &&
-          "border border-soft-border bg-white text-slate-800 hover:bg-slate-50 disabled:opacity-40",
+          "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40 disabled:shadow-none",
         kind === "ghost" &&
-          "border border-soft-border bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40",
+          "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-brand-200 hover:bg-brand-50/60 hover:text-brand-800 disabled:opacity-40 disabled:shadow-none",
       )}
     >
       {icon}

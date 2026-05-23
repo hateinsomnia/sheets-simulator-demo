@@ -68,7 +68,7 @@ export interface FilterState {
 /** Цветовая пометка ячейки (используется в заданиях с подсветкой). */
 export type CellHighlight = "yellow" | "green" | "red" | "blue" | null;
 
-export interface SpreadsheetState {
+export interface SpreadsheetSnapshot {
   columns: ColumnDef[];
   rows: RowData[];
   /** Изначальные строки, чтобы корректно сбрасывать сортировку/фильтры/правки. */
@@ -82,4 +82,9 @@ export interface SpreadsheetState {
   editing: CellAddress | null;
   /** "Замороженные" колонки — недоступны для правок (например, "День"). */
   lockedColumns: string[];
+}
+
+export interface SpreadsheetState extends SpreadsheetSnapshot {
+  past: SpreadsheetSnapshot[];
+  future: SpreadsheetSnapshot[];
 }

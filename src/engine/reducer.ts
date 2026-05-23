@@ -7,6 +7,7 @@ import type {
   RowData,
   SelectionKind,
   SortDirection,
+  SpreadsheetSnapshot,
   SpreadsheetState,
 } from "./types";
 
@@ -18,13 +19,20 @@ export type SpreadsheetAction =
   | { type: "clearSelection" }
   | { type: "startEdit"; rowId: string; colKey: string }
   | { type: "commitEdit"; rowId: string; colKey: string; value: CellValue }
+  | { type: "setCells"; updates: Array<{ rowId: string; colKey: string; value: CellValue }> }
   | { type: "cancelEdit" }
   | { type: "setSort"; colKey: string | null; direction: SortDirection }
   | { type: "setFilter"; colKey: string | null; predicate: FilterPredicate | null }
   | { type: "setColumnWidth"; colKey: string; width: number }
+  | { type: "renameColumn"; colKey: string; title: string }
+  | { type: "addRow" }
+  | { type: "addColumn"; title?: string; columnType?: ColumnDef["type"] }
+  | { type: "clearValues" }
   | { type: "highlightCells"; addresses: Array<{ rowId: string; colKey: string }>; color: CellHighlight }
   | { type: "clearHighlights" }
   | { type: "loadDataset"; columns: ColumnDef[]; rows: RowData[]; lockedColumns?: string[] }
+  | { type: "undo" }
+  | { type: "redo" }
   | { type: "resetState" };
 
 export function createInitialState(
@@ -42,6 +50,8 @@ export function createInitialState(
     highlights: {},
     editing: null,
     lockedColumns,
+    past: [],
+    future: [],
   };
 }
 
@@ -49,11 +59,64 @@ function highlightKey(rowId: string, colKey: string) {
   return `${rowId}|${colKey}`;
 }
 
+function uniqueColumnKey(columns: ColumnDef[]) {
+  let i = columns.length + 1;
+  let key = `free_col_${i}`;
+  const existing = new Set(columns.map((c) => c.key));
+  while (existing.has(key)) {
+    i += 1;
+    key = `free_col_${i}`;
+  }
+  return key;
+}
+
+function snapshot(state: SpreadsheetState): SpreadsheetSnapshot {
+  return {
+    columns: state.columns,
+    rows: state.rows,
+    initialRows: state.initialRows,
+    selection: state.selection,
+    sort: state.sort,
+    filter: state.filter,
+    highlights: state.highlights,
+    editing: null,
+    lockedColumns: state.lockedColumns,
+  };
+}
+
+function withHistory(prev: SpreadsheetState, next: SpreadsheetState): SpreadsheetState {
+  if (next === prev) return prev;
+  return {
+    ...next,
+    editing: null,
+    past: [...prev.past.slice(-49), snapshot(prev)],
+    future: [],
+  };
+}
+
 export function spreadsheetReducer(
   state: SpreadsheetState,
   action: SpreadsheetAction,
 ): SpreadsheetState {
   switch (action.type) {
+    case "undo": {
+      const previous = state.past[state.past.length - 1];
+      if (!previous) return state;
+      return {
+        ...previous,
+        past: state.past.slice(0, -1),
+        future: [snapshot(state), ...state.future],
+      };
+    }
+    case "redo": {
+      const next = state.future[0];
+      if (!next) return state;
+      return {
+        ...next,
+        past: [...state.past.slice(-49), snapshot(state)],
+        future: state.future.slice(1),
+      };
+    }
     case "selectCell": {
       // Shift-click — расширяем диапазон от текущего якоря, если он есть.
       if (action.extend && state.selection.type !== "none") {
@@ -113,26 +176,105 @@ export function spreadsheetReducer(
           ? { ...row, values: { ...row.values, [action.colKey]: action.value } }
           : row,
       );
-      return { ...state, rows: newRows, editing: null };
+      return withHistory(state, { ...state, rows: newRows, editing: null });
+    }
+    case "setCells": {
+      const locked = new Set(state.lockedColumns);
+      const updateMap = new Map<string, CellValue>();
+      for (const update of action.updates) {
+        if (!locked.has(update.colKey)) {
+          updateMap.set(highlightKey(update.rowId, update.colKey), update.value);
+        }
+      }
+      if (updateMap.size === 0) return state;
+      const newRows = state.rows.map((row) => {
+        let changed = false;
+        const values = { ...row.values };
+        for (const col of state.columns) {
+          const k = highlightKey(row.id, col.key);
+          if (updateMap.has(k)) {
+            values[col.key] = updateMap.get(k) ?? null;
+            changed = true;
+          }
+        }
+        return changed ? { ...row, values } : row;
+      });
+      return withHistory(state, { ...state, rows: newRows, editing: null });
     }
     case "cancelEdit":
       return { ...state, editing: null };
 
     case "setSort":
-      return {
+      return withHistory(state, {
         ...state,
         sort: { colKey: action.colKey, direction: action.direction },
-      };
+      });
     case "setFilter":
-      return {
+      return withHistory(state, {
         ...state,
         filter: { colKey: action.colKey, predicate: action.predicate },
-      };
+      });
     case "setColumnWidth": {
       const newCols = state.columns.map((c) =>
         c.key === action.colKey ? { ...c, width: Math.max(60, action.width) } : c,
       );
-      return { ...state, columns: newCols };
+      return withHistory(state, { ...state, columns: newCols });
+    }
+    case "renameColumn": {
+      const title = action.title.trim();
+      return withHistory(state, {
+        ...state,
+        columns: state.columns.map((c) =>
+          c.key === action.colKey ? { ...c, title } : c,
+        ),
+      });
+    }
+    case "addRow": {
+      const idBase = `free-row-${Date.now()}`;
+      const values = Object.fromEntries(state.columns.map((c) => [c.key, null]));
+      const row: RowData = { id: `${idBase}-${state.rows.length + 1}`, values };
+      return withHistory(state, {
+        ...state,
+        rows: [...state.rows, row],
+        initialRows: [...state.initialRows, row],
+        selection: { type: "cell", row: state.rows.length, col: 0 },
+      });
+    }
+    case "addColumn": {
+      const key = uniqueColumnKey(state.columns);
+      const column: ColumnDef = {
+        key,
+        title: action.title?.trim() ?? "",
+        type: action.columnType ?? "text",
+        width: 140,
+      };
+      const addValue = (row: RowData): RowData => ({
+        ...row,
+        values: { ...row.values, [key]: null },
+      });
+      return withHistory(state, {
+        ...state,
+        columns: [...state.columns, column],
+        rows: state.rows.map(addValue),
+        initialRows: state.initialRows.map(addValue),
+        selection: { type: "column", col: state.columns.length },
+      });
+    }
+    case "clearValues": {
+      const blankRows = state.rows.map((row) => ({
+        ...row,
+        values: Object.fromEntries(state.columns.map((c) => [c.key, null])),
+      }));
+      return withHistory(state, {
+        ...state,
+        rows: blankRows,
+        initialRows: blankRows,
+        selection: { type: "none" },
+        highlights: {},
+        editing: null,
+        sort: { colKey: null, direction: null },
+        filter: { colKey: null, predicate: null },
+      });
     }
 
     case "highlightCells": {
@@ -142,10 +284,10 @@ export function spreadsheetReducer(
         if (action.color === null) delete next[k];
         else next[k] = action.color;
       }
-      return { ...state, highlights: next };
+      return withHistory(state, { ...state, highlights: next });
     }
     case "clearHighlights":
-      return { ...state, highlights: {} };
+      return withHistory(state, { ...state, highlights: {} });
 
     case "loadDataset":
       return {
@@ -159,9 +301,11 @@ export function spreadsheetReducer(
         highlights: {},
         editing: null,
         lockedColumns: action.lockedColumns ?? [],
+        past: [],
+        future: [],
       };
     case "resetState":
-      return {
+      return withHistory(state, {
         ...state,
         rows: state.initialRows,
         selection: { type: "none" },
@@ -169,7 +313,7 @@ export function spreadsheetReducer(
         filter: { colKey: null, predicate: null },
         highlights: {},
         editing: null,
-      };
+      });
 
     default:
       return state;

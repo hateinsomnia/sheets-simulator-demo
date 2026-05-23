@@ -34,7 +34,7 @@ const config: Config = {
         soft: {
           bg: "#f7f9fc",
           panel: "#ffffff",
-          border: "#e5e9f2",
+          border: "#bcc5d4",
           muted: "#6b7280",
         },
       },

@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Grid3x3, Rows3, Columns3, Sparkles } from "lucide-react";
+import { ArrowRight, Columns3, Grid3x3, MousePointer2, Rows3, Sparkles } from "lucide-react";
 
 interface IntroScreenProps {
   onStart: () => void;
+  onStartFreeMode: () => void;
 }
 
 /**
@@ -13,7 +14,7 @@ interface IntroScreenProps {
  *   2) понимание, зачем это в реальной жизни;
  *   3) ясный CTA "Начать урок".
  */
-export function IntroScreen({ onStart }: IntroScreenProps) {
+export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
   return (
     <div className="mx-auto flex min-h-[100vh] w-full max-w-5xl flex-col items-center justify-center px-6 py-10">
       <motion.div
@@ -33,7 +34,7 @@ export function IntroScreen({ onStart }: IntroScreenProps) {
           </h1>
           <p className="mt-4 max-w-2xl text-balance text-base text-slate-600 sm:text-lg">
             За 5 коротких заданий ты научишься выделять данные, сортировать, искать аномалии,
-            замечать закономерности и делать выводы — на примерах из школьной жизни.
+            замечать закономерности и делать выводы — на примерах из жизни.
           </p>
         </div>
 
@@ -104,16 +105,16 @@ export function IntroScreen({ onStart }: IntroScreenProps) {
         </div>
 
         <div className="mt-10 rounded-2xl border border-soft-border bg-white p-5 shadow-soft">
-          <h2 className="text-base font-semibold text-slate-900">Как устроен тренажёр</h2>
+          <h2 className="text-base font-semibold text-slate-900">Где используется работа с таблицами</h2>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Step n={1} text="Сначала система коротко объясняет шаг и показывает демонстрацию." />
-            <Step n={2} text="Потом ты повторяешь действие сам(а) — прямо на таблице." />
-            <Step n={3} text="Если что-то не получается — нажми «Подсказка»." />
-            <Step n={4} text="После каждого шага можно «Проверить» себя или «Сбросить»." />
+            <Step n={1} text="1 пример" />
+            <Step n={2} text="2 пример" />
+            <Step n={3} text="3 пример" />
+            <Step n={4} text="4 пример" />
           </ul>
         </div>
 
-        <div className="mt-10 flex justify-center">
+        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onStart}
@@ -121,6 +122,14 @@ export function IntroScreen({ onStart }: IntroScreenProps) {
           >
             Начать урок
             <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onStartFreeMode}
+            className="group inline-flex items-center gap-2 rounded-xl border border-soft-border bg-white px-6 py-3 text-base font-semibold text-slate-700 shadow-soft transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800 focusable"
+          >
+            <MousePointer2 className="h-4 w-4 transition group-hover:rotate-[-8deg]" />
+            Свободный режим
           </button>
         </div>
 

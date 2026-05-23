@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   ArrowDownAZ,
+  ArrowLeft,
+  ArrowRight,
   ArrowUpAZ,
   Eraser,
-  PaintBucket,
   RotateCcw,
 } from "lucide-react";
 import type {
@@ -14,6 +16,7 @@ import type {
 import type { SpreadsheetAction } from "@/engine/reducer";
 import { cn } from "@/lib/utils";
 import { selectionToCells } from "@/engine/selection";
+import { filterRows as filterFn, sortRows as sortFn } from "@/engine/sortFilter";
 
 interface ToolbarProps {
   state: SpreadsheetState;
@@ -30,14 +33,19 @@ const FILL_OPTIONS: Array<{ color: NonNullable<CellHighlight>; label: string; bg
 ];
 
 export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
-  const { selection, columns, rows, sort } = state;
+  const { selection, columns, rows, sort, filter } = state;
+  const visibleRows = useMemo(() => {
+    const filterCol = columns.find((c) => c.key === filter.colKey);
+    const sortCol = columns.find((c) => c.key === sort.colKey);
+    return sortFn(filterFn(rows, filterCol, filter.predicate), sortCol, sort.direction);
+  }, [rows, columns, sort, filter]);
 
   const applyFill = (color: NonNullable<CellHighlight>) => {
-    const cells = selectionToCells(selection, rows.length, columns.length);
+    const cells = selectionToCells(selection, visibleRows.length, columns.length);
     if (cells.length === 0) return;
     const addresses = cells
       .map((c) => {
-        const row = rows[c.row];
+        const row = visibleRows[c.row];
         const col = columns[c.col];
         if (!row || !col) return null;
         return { rowId: row.id, colKey: col.key };
@@ -47,10 +55,10 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
   };
 
   const clearFillForSelection = () => {
-    const cells = selectionToCells(selection, rows.length, columns.length);
+    const cells = selectionToCells(selection, visibleRows.length, columns.length);
     const addresses = cells
       .map((c) => {
-        const row = rows[c.row];
+        const row = visibleRows[c.row];
         const col = columns[c.col];
         if (!row || !col) return null;
         return { rowId: row.id, colKey: col.key };
@@ -66,29 +74,40 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
     if (selection.type === "range") return columns[selection.range.focusCol]?.key ?? null;
     return null;
   })();
+  const activeColumnTitle = activeColKey ? columns.find((c) => c.key === activeColKey)?.title : null;
+  const nextSortDirection =
+    activeColKey && sort.colKey === activeColKey && sort.direction === "asc" ? "desc" : "asc";
+  const sortLabel = activeColumnTitle
+    ? `Сортировать «${activeColumnTitle}» по ${nextSortDirection === "asc" ? "возрастанию" : "убыванию"}`
+    : "Выдели колонку или ячейку, чтобы отсортировать";
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-soft-border bg-white p-2 shadow-soft">
       <ToolGroup>
         <ToolButton
-          label="Сортировать по возрастанию"
-          onClick={() =>
-            activeColKey &&
-            dispatch({ type: "setSort", colKey: activeColKey, direction: "asc" })
-          }
-          disabled={!activeColKey}
-          active={!!activeColKey && sort.colKey === activeColKey && sort.direction === "asc"}
-          icon={<ArrowUpAZ className="h-4 w-4" />}
+          label="Отменить"
+          onClick={() => dispatch({ type: "undo" })}
+          disabled={state.past.length === 0}
+          icon={<ArrowLeft className="h-4 w-4" />}
         />
         <ToolButton
-          label="Сортировать по убыванию"
-          onClick={() =>
-            activeColKey &&
-            dispatch({ type: "setSort", colKey: activeColKey, direction: "desc" })
-          }
+          label="Восстановить"
+          onClick={() => dispatch({ type: "redo" })}
+          disabled={state.future.length === 0}
+          icon={<ArrowRight className="h-4 w-4" />}
+        />
+      </ToolGroup>
+
+      <Divider />
+
+      <ToolGroup>
+        <ToolButton
+          label={sortLabel}
+          onClick={() => activeColKey && dispatch({ type: "setSort", colKey: activeColKey, direction: nextSortDirection })}
           disabled={!activeColKey}
-          active={!!activeColKey && sort.colKey === activeColKey && sort.direction === "desc"}
-          icon={<ArrowDownAZ className="h-4 w-4" />}
+          active={!!activeColKey && sort.colKey === activeColKey && !!sort.direction}
+          icon={nextSortDirection === "asc" ? <ArrowUpAZ className="h-4 w-4" /> : <ArrowDownAZ className="h-4 w-4" />}
+          tutorialId="sort-toggle"
         />
       </ToolGroup>
 
@@ -115,12 +134,6 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
           onClick={clearFillForSelection}
           disabled={selection.type === "none"}
           icon={<Eraser className="h-4 w-4" />}
-        />
-        <ToolButton
-          label="Снять всю заливку"
-          onClick={() => dispatch({ type: "clearHighlights" })}
-          icon={<PaintBucket className="h-4 w-4 rotate-180" />}
-          variant="ghost"
         />
       </ToolGroup>
 
@@ -157,6 +170,7 @@ function ToolButton({
   disabled,
   active,
   variant = "default",
+  tutorialId,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -164,6 +178,7 @@ function ToolButton({
   disabled?: boolean;
   active?: boolean;
   variant?: "default" | "ghost";
+  tutorialId?: string;
 }) {
   return (
     <button
@@ -172,6 +187,7 @@ function ToolButton({
       disabled={disabled}
       title={label}
       aria-label={label}
+      data-tutorial-id={tutorialId}
       className={cn(
         "inline-flex h-8 w-8 items-center justify-center rounded-md border text-slate-700 transition",
         variant === "default"

@@ -1,6 +1,7 @@
 import type { LessonCheck } from "./types";
 import type { SpreadsheetState } from "@/engine/types";
 import { selectionToCells } from "@/engine/selection";
+import { filterRows, sortRows } from "@/engine/sortFilter";
 
 export interface CheckContext {
   state: SpreadsheetState;
@@ -22,6 +23,9 @@ export interface CheckResult {
  */
 export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
   const { state, selectedOptionId } = ctx;
+  const filterCol = state.columns.find((c) => c.key === state.filter.colKey);
+  const sortCol = state.columns.find((c) => c.key === state.sort.colKey);
+  const visibleRows = sortRows(filterRows(state.rows, filterCol, state.filter.predicate), sortCol, state.sort.direction);
   switch (check.kind) {
     case "selectColumn": {
       if (state.selection.type !== "column") {
@@ -43,12 +47,12 @@ export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
       return { ok: true };
     }
     case "selectCell": {
-      const cells = selectionToCells(state.selection, state.rows.length, state.columns.length);
+      const cells = selectionToCells(state.selection, visibleRows.length, state.columns.length);
       if (cells.length !== 1) {
         return { ok: false, reason: "Нужно выделить только одну ячейку." };
       }
       const c = cells[0];
-      const row = state.rows[c.row];
+      const row = visibleRows[c.row];
       const col = state.columns[c.col];
       if (!row || !col) return { ok: false, reason: "Ячейка вне таблицы." };
       if (row.id !== check.rowId || col.key !== check.colKey) {
@@ -57,11 +61,11 @@ export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
       return { ok: true };
     }
     case "selectCells": {
-      const cells = selectionToCells(state.selection, state.rows.length, state.columns.length);
+      const cells = selectionToCells(state.selection, visibleRows.length, state.columns.length);
       const got = new Set(
         cells
           .map((c) => {
-            const r = state.rows[c.row];
+            const r = visibleRows[c.row];
             const col = state.columns[c.col];
             if (!r || !col) return "";
             return `${r.id}|${col.key}`;
@@ -99,7 +103,7 @@ export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
       if (state.sort.colKey !== check.colKey || state.sort.direction !== check.direction) {
         return {
           ok: false,
-          reason: "Сортировка ещё не подходит. Нажми на стрелочку в нужной колонке.",
+          reason: "Сортировка ещё не подходит. Выдели нужную колонку и нажми кнопку сортировки сверху.",
         };
       }
       return { ok: true };

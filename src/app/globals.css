@@ -4,11 +4,20 @@
 
 :root {
   color-scheme: light;
-  --grid-line: #e7ecf3;
+  --grid-line: #c8d0dc;
   --header-bg: #f4f6fa;
   --row-stripe: #fbfcfe;
-  --selection-bg: rgba(59, 130, 246, 0.12);
-  --selection-border: #3b82f6;
+  --selection-bg: rgba(71, 85, 105, 0.11);
+  --selection-border: #475569;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --grid-line: #283346;
+  --header-bg: #182235;
+  --row-stripe: #101827;
+  --selection-bg: rgba(148, 163, 184, 0.15);
+  --selection-border: #94a3b8;
 }
 
 html,
@@ -20,12 +29,88 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body,
+button,
+input,
+.spreadsheet-grid,
+[class*="rounded"],
+[class*="border"],
+[class*="shadow"] {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.dark body {
+  background: #0b1120;
+  color: #e5e7eb;
+}
+
 /* Сетка таблицы — мягче чем по умолчанию у браузера, ближе к Sheets. */
 .spreadsheet-grid {
   background-color: #ffffff;
   background-image:
     linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+}
+
+.dark .spreadsheet-grid {
+  background-color: #0f172a;
+}
+
+.dark [class~="bg-soft-bg"],
+.dark [class~="bg-slate-50"],
+.dark [class~="bg-slate-50/80"],
+.dark [class~="bg-slate-100"] {
+  background-color: #0b1120;
+}
+
+.dark [class~="bg-white"],
+.dark [class~="bg-white/80"],
+.dark [class~="bg-white/85"],
+.dark [class~="bg-white/95"] {
+  background-color: rgba(15, 23, 42, 0.92);
+}
+
+.dark [class~="bg-brand-50"],
+.dark [class~="bg-brand-50/40"],
+.dark [class~="bg-brand-50/60"] {
+  background-color: rgba(30, 64, 175, 0.24);
+}
+
+.dark [class~="bg-brand-100"] {
+  background-color: rgba(37, 99, 235, 0.24);
+}
+
+.dark [class~="border-soft-border"],
+.dark [class~="border-slate-200"] {
+  border-color: #263248;
+}
+
+.dark [class~="text-slate-900"],
+.dark [class~="text-slate-800"],
+.dark [class~="text-slate-700"] {
+  color: #e5e7eb;
+}
+
+.dark [class~="text-slate-600"],
+.dark [class~="text-soft-muted"] {
+  color: #94a3b8;
+}
+
+.dark [class~="text-brand-700"],
+.dark [class~="text-brand-800"],
+.dark [class~="text-brand-900"] {
+  color: #bfdbfe;
+}
+
+.dark [class~="shadow-soft"],
+.dark [class~="shadow-panel"] {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
 /* Скроллбары — аккуратные. */
@@ -43,6 +128,11 @@ body {
 }
 .scroll-area::-webkit-scrollbar-track {
   background: transparent;
+}
+
+.dark .scroll-area::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-color: #0f172a;
 }
 
 /* Базовый focus ring для интерактивных элементов. */
