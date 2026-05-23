@@ -24,10 +24,6 @@ export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
         className="w-full"
       >
         <div className="flex flex-col items-center text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">
-            <Sparkles className="h-3.5 w-3.5" />
-            Тренажёр таблиц для 4–8 классов
-          </span>
           <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
             Учимся работать с таблицами{" "}
             <span className="text-brand-600">как настоящие аналитики</span>
@@ -104,16 +100,6 @@ export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
           />
         </div>
 
-        <div className="mt-10 rounded-2xl border border-soft-border bg-white p-5 shadow-soft">
-          <h2 className="text-base font-semibold text-slate-900">Где используется работа с таблицами</h2>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Step n={1} text="1 пример" />
-            <Step n={2} text="2 пример" />
-            <Step n={3} text="3 пример" />
-            <Step n={4} text="4 пример" />
-          </ul>
-        </div>
-
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <button
             type="button"
@@ -132,10 +118,6 @@ export function IntroScreen({ onStart, onStartFreeMode }: IntroScreenProps) {
             Свободный режим
           </button>
         </div>
-
-        <p className="mt-4 text-center text-xs text-soft-muted">
-          Можно открывать на ноутбуке или большом планшете. Используй мышь и клавиатуру.
-        </p>
       </motion.div>
     </div>
   );
