@@ -24,7 +24,7 @@ export function CelebrationModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="celebration-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          className="celebration-modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -34,10 +34,10 @@ export function CelebrationModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: "spring", duration: 0.45 }}
-            className="celebration-modal-card w-full max-w-md rounded-2xl bg-white p-6 shadow-panel"
+            className="celebration-modal-card w-full max-w-md rounded-[1.75rem] border border-white/70 bg-white p-6 shadow-panel"
           >
             <div className="flex items-center gap-3">
-              <div className="celebration-modal-icon flex h-12 w-12 items-center justify-center rounded-xl bg-success-100 text-success-700">
+              <div className="celebration-modal-icon flex h-12 w-12 items-center justify-center rounded-2xl bg-success-100 text-success-700 shadow-sm">
                 {kind === "course" ? (
                   <Trophy className="h-6 w-6" />
                 ) : (
@@ -80,7 +80,7 @@ export function CelebrationModal({
                 <button
                   type="button"
                   onClick={onRestart}
-                  className="celebration-modal-secondary rounded-lg border border-soft-border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 focusable"
+                  className="celebration-modal-secondary rounded-xl border border-soft-border px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50 focusable"
                 >
                   Пройти заново
                 </button>
@@ -88,7 +88,7 @@ export function CelebrationModal({
               <button
                 type="button"
                 onClick={onContinue}
-                className="celebration-modal-primary inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow-soft hover:bg-brand-700 focusable"
+                className="celebration-modal-primary inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 px-3 py-2 text-sm font-medium text-white shadow-soft hover:from-brand-700 hover:to-brand-600 focusable"
               >
                 {kind === "course" ? "Хорошо" : "Продолжить"}
                 <ArrowRight className="h-4 w-4" />

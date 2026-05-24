@@ -16,14 +16,21 @@ export function sortRows(
   copy.sort((a, b) => {
     const av = a.values[column.key];
     const bv = b.values[column.key];
+    const aEmpty = av === null || av === undefined || av === "";
+    const bEmpty = bv === null || bv === undefined || bv === "";
 
     // Пустые значения всегда уводим вниз, чтобы они не мешали учебным сравнениям.
-    if (av === null || av === undefined) return 1;
-    if (bv === null || bv === undefined) return -1;
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
     if (column.type === "number") {
-      const an = Number(av);
-      const bn = Number(bv);
-      return direction === "asc" ? an - bn : bn - an;
+      const an = Number(String(av).replace(/\s/g, "").replace(",", "."));
+      const bn = Number(String(bv).replace(/\s/g, "").replace(",", "."));
+      const aFinite = Number.isFinite(an);
+      const bFinite = Number.isFinite(bn);
+      if (aFinite && bFinite) return direction === "asc" ? an - bn : bn - an;
+      if (aFinite) return -1;
+      if (bFinite) return 1;
     }
     const as = String(av).toLocaleLowerCase("ru");
     const bs = String(bv).toLocaleLowerCase("ru");

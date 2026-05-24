@@ -35,6 +35,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepCompletedMap, setStepCompletedMap] = useState<Record<string, boolean>>({});
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
+  const [lessonStepMap, setLessonStepMap] = useState<Record<number, number>>({});
 
   const [demoActive, setDemoActive] = useState(false);
   const [demoTargetsKey, setDemoTargetsKey] = useState(0);
@@ -164,15 +165,20 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
   const handleResetTask = useCallback(() => {
     dispatch({ type: "resetState" });
     setFeedback(null);
+    setHintText(null);
     setSelectedOptionId(null);
     setHasCalculated(false);
+    setCurrentStepIndex(0);
+    setLessonStepMap((prev) => ({ ...prev, [currentLessonIndex]: 0 }));
 
     setStepCompletedMap((prev) => {
       const next = { ...prev };
-      delete next[stepCompleteKey];
+      lesson.steps.forEach((_, i) => {
+        delete next[`${currentLessonIndex}:${i}`];
+      });
       return next;
     });
-  }, [stepCompleteKey]);
+  }, [currentLessonIndex, lesson.steps]);
 
   const handleCheck = useCallback(() => {
     const result = runCheck(step.check, { state, selectedOptionId, hasCalculated });
@@ -189,35 +195,42 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
   const handleNextStep = useCallback(() => {
     if (currentStepIndex < lesson.steps.length - 1) {
-      setCurrentStepIndex((i) => i + 1);
+      const next = currentStepIndex + 1;
+      setCurrentStepIndex(next);
+      setLessonStepMap((prev) => ({ ...prev, [currentLessonIndex]: next }));
       setFeedback(null);
       setHintText(null);
       setSelectedOptionId(null);
     }
-  }, [currentStepIndex, lesson.steps.length]);
+  }, [currentStepIndex, lesson.steps.length, currentLessonIndex]);
 
   const handlePrevStep = useCallback(() => {
     if (currentStepIndex > 0) {
-      setCurrentStepIndex((i) => i - 1);
+      const prev = currentStepIndex - 1;
+      setCurrentStepIndex(prev);
+      setLessonStepMap((prevMap) => ({ ...prevMap, [currentLessonIndex]: prev }));
       setFeedback(null);
       setHintText(null);
       setSelectedOptionId(null);
     }
-  }, [currentStepIndex]);
+  }, [currentStepIndex, currentLessonIndex]);
 
   const handlePrevLesson = useCallback(() => {
     if (currentLessonIndex === 0) return;
-    setCurrentLessonIndex((i) => i - 1);
-    setCurrentStepIndex(0);
-  }, [currentLessonIndex]);
+    const prevIdx = currentLessonIndex - 1;
+    setCurrentLessonIndex(prevIdx);
+    setCurrentStepIndex(lessonStepMap[prevIdx] ?? 0);
+  }, [currentLessonIndex, lessonStepMap]);
 
   const handleJumpToLesson = useCallback(
     (idx: number) => {
       if (idx === currentLessonIndex) return;
+      const isUnlocked = idx === 0 || completedLessons.includes(idx - 1);
+      if (!isUnlocked) return;
       setCurrentLessonIndex(idx);
-      setCurrentStepIndex(0);
+      setCurrentStepIndex(lessonStepMap[idx] ?? 0);
     },
-    [currentLessonIndex],
+    [currentLessonIndex, completedLessons, lessonStepMap],
   );
 
   const handleNextLesson = useCallback(() => {
@@ -238,11 +251,11 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
       const next = currentLessonIndex + 1;
       if (next < lessons.length) {
         setCurrentLessonIndex(next);
-        setCurrentStepIndex(0);
+        setCurrentStepIndex(lessonStepMap[next] ?? 0);
       }
     }
     setCelebration(null);
-  }, [celebration, currentLessonIndex]);
+  }, [celebration, currentLessonIndex, lessonStepMap]);
 
   const handleCelebrationRestart = useCallback(() => {
     setCelebration(null);
@@ -250,6 +263,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     setCurrentStepIndex(0);
     setStepCompletedMap({});
     setCompletedLessons([]);
+    setLessonStepMap({});
   }, []);
 
   const overlayTargets = useMemo(() => {
@@ -260,11 +274,11 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
   return (
     <div className="flex h-screen w-full flex-col bg-soft-bg">
-      <header className="flex flex-col gap-3 border-b border-soft-border bg-white/80 px-4 py-3 backdrop-blur md:flex-row md:items-center md:gap-4">
+      <header className="flex flex-col gap-3 border-b border-white/50 bg-white/75 px-4 py-3 shadow-sm backdrop-blur-xl md:flex-row md:items-center md:gap-4">
         <button
           type="button"
           onClick={onBackToIntro}
-          className="inline-flex items-center gap-1.5 self-start rounded-lg border border-soft-border bg-white px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focusable"
+          className="inline-flex items-center gap-1.5 self-start rounded-xl border border-soft-border bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 shadow-soft hover:-translate-y-0.5 hover:bg-white focusable"
         >
           <ChevronLeft className="h-4 w-4" />
           К началу
@@ -282,8 +296,8 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
         </div>
       </header>
 
-      <main className="flex flex-1 gap-4 overflow-hidden p-4">
-        <section className="flex min-w-0 flex-1 flex-col gap-2">
+      <main className="flex flex-1 gap-4 overflow-hidden p-3 sm:p-4">
+        <section className="flex min-w-0 flex-1 flex-col gap-3">
           <Toolbar state={state} dispatch={dispatch} onResetTask={handleResetTask} />
           <FormulaBar state={state} />
           {lesson.budgetCalculator && (

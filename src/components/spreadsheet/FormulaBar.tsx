@@ -64,8 +64,8 @@ export function FormulaBar({ state }: FormulaBarProps) {
   }, [selection, visibleRows, columns]);
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-soft-border bg-white px-3 py-2 text-sm shadow-soft">
-      <div className="flex h-7 min-w-[64px] items-center justify-center rounded-md bg-slate-100 font-mono text-xs font-semibold text-slate-700">
+    <div className="flex items-center gap-2 rounded-xl border border-soft-border bg-white/90 px-3 py-2 text-sm shadow-soft backdrop-blur-xl">
+      <div className="flex h-7 min-w-[64px] items-center justify-center rounded-lg bg-slate-100 font-mono text-xs font-semibold text-slate-700">
         {info?.addr ?? "—"}
       </div>
       <Hash className="h-4 w-4 text-soft-muted" />

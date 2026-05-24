@@ -22,11 +22,11 @@ export function FreeModeView({ onBackToIntro }: FreeModeViewProps) {
 
   return (
     <div className="flex h-screen w-full flex-col bg-soft-bg">
-      <header className="flex flex-col gap-3 border-b border-soft-border bg-white/80 px-4 py-3 backdrop-blur md:flex-row md:items-center md:gap-4">
+      <header className="flex flex-col gap-3 border-b border-white/50 bg-white/75 px-4 py-3 shadow-sm backdrop-blur-xl md:flex-row md:items-center md:gap-4">
         <button
           type="button"
           onClick={onBackToIntro}
-          className="inline-flex items-center gap-1.5 self-start rounded-lg border border-soft-border bg-white px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focusable"
+          className="inline-flex items-center gap-1.5 self-start rounded-xl border border-soft-border bg-white/85 px-3 py-2 text-sm font-medium text-slate-700 shadow-soft hover:-translate-y-0.5 hover:bg-white focusable"
         >
           <ChevronLeft className="h-4 w-4" />
           К началу
@@ -42,9 +42,9 @@ export function FreeModeView({ onBackToIntro }: FreeModeViewProps) {
         </div>
       </header>
 
-      <main className="flex flex-1 gap-4 overflow-hidden p-4">
-        <section className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-soft-border bg-white p-2 shadow-soft">
+      <main className="flex flex-1 gap-4 overflow-hidden p-3 sm:p-4">
+        <section className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/70 bg-white/85 p-2 shadow-soft backdrop-blur-xl">
             <FreeActionButton icon={<Rows3 className="h-4 w-4" />} label="Строка" onClick={() => dispatch({ type: "addRow" })} />
             <FreeActionButton icon={<Plus className="h-4 w-4" />} label="Колонка" onClick={() => dispatch({ type: "addColumn" })} />
             <FreeActionButton icon={<Trash2 className="h-4 w-4" />} label="Очистить" onClick={() => dispatch({ type: "clearValues" })} />
@@ -73,7 +73,7 @@ function FreeActionButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-soft-border bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:-translate-y-0.5 hover:bg-brand-50 hover:text-brand-800 focusable"
+      className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-soft-border bg-white/90 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800 focusable"
     >
       {icon}
       {label}

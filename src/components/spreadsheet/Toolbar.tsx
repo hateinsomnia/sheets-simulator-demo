@@ -80,7 +80,7 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
     : "Выдели колонку или ячейку, чтобы отсортировать";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-soft-border bg-white p-2 shadow-soft">
+    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/70 bg-white/85 p-2 shadow-soft backdrop-blur-xl">
       <ToolGroup>
         <ToolButton
           label="Отменить"
@@ -122,7 +122,7 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
             disabled={selection.type === "none"}
             title={`Покрасить ${opt.label.toLowerCase()}`}
             className={cn(
-              "h-7 w-7 rounded-md border border-soft-border transition hover:scale-105 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50",
+              "h-8 w-8 rounded-lg border border-soft-border shadow-sm transition hover:scale-105 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50",
               opt.bg,
             )}
           />
@@ -141,7 +141,7 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
         <button
           type="button"
           onClick={onResetTask}
-          className="inline-flex items-center gap-1.5 rounded-md border border-soft-border px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-soft-border bg-white/70 px-2.5 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800 focusable"
           title="Сбросить прогресс задания"
           data-tutorial-id="reset-task"
         >
@@ -158,7 +158,7 @@ function ToolGroup({ children }: { children: React.ReactNode }) {
 }
 
 function Divider() {
-  return <div className="h-6 w-px bg-soft-border" />;
+  return <div className="h-7 w-px bg-soft-border/80" />;
 }
 
 function ToolButton({
@@ -187,11 +187,11 @@ function ToolButton({
       aria-label={label}
       data-tutorial-id={tutorialId}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-md border text-slate-700 transition",
+        "inline-flex h-8 w-8 items-center justify-center rounded-lg border text-slate-700 shadow-sm transition",
         variant === "default"
-          ? "border-soft-border hover:bg-slate-50"
-          : "border-transparent hover:bg-slate-50",
-        active && "border-brand-300 bg-brand-50 text-brand-700",
+          ? "border-soft-border bg-white/70 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-800"
+          : "border-transparent bg-transparent shadow-none hover:bg-brand-50 hover:text-brand-800",
+        active && "border-brand-300 bg-brand-50 text-brand-700 shadow-soft",
         disabled && "cursor-not-allowed opacity-40",
       )}
     >

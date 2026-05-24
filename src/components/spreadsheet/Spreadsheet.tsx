@@ -300,6 +300,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (editing) return;
+      if (isTextEntryTarget(e.target)) return;
       const key = e.key.toLowerCase();
       if (e.ctrlKey || e.metaKey) {
         if (isUndoShortcut(e)) {
@@ -415,6 +416,25 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
     return () => window.removeEventListener("keydown", handleWindowKeyDown);
   }, [dispatch]);
 
+  useEffect(() => {
+    const onGlobalMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest("button") ||
+        target.closest("input") ||
+        target.closest("textarea") ||
+        target.closest("[role='button']")
+      ) {
+        return;
+      }
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        dispatch({ type: "clearSelection" });
+      }
+    };
+    window.addEventListener("mousedown", onGlobalMouseDown);
+    return () => window.removeEventListener("mousedown", onGlobalMouseDown);
+  }, [dispatch]);
+
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
 
   return (
@@ -428,10 +448,22 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
       onCopy={handleCopy}
       onCut={handleCut}
       onPaste={handlePaste}
-      className="focusable relative h-full w-full overflow-auto rounded-xl border border-soft-border bg-white shadow-soft scroll-area"
+      onMouseDown={(e) => {
+        const target = e.target as HTMLElement;
+        const isInteractive =
+          target.closest('[role="gridcell"]') ||
+          target.closest('[data-tutorial-id]') ||
+          target.closest("button") ||
+          target.closest("input");
+        if (!isInteractive) {
+          dispatch({ type: "clearSelection" });
+          containerRef.current?.focus({ preventScroll: true });
+        }
+      }}
+      className="focusable relative h-full w-full overflow-auto rounded-2xl border border-soft-border bg-white/95 shadow-soft scroll-area"
     >
       <div className="min-w-max">
-        <div className="sticky top-0 z-20 flex bg-[var(--header-bg)]">
+        <div className="sticky top-0 z-20 flex bg-[var(--header-bg)] shadow-[0_1px_0_var(--grid-line)]">
           <CornerCell />
           {columns.map((col, ci) => (
             <ColumnHeader
@@ -474,7 +506,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
           ))}
         </div>
 
-        <div className="spreadsheet-grid">
+        <div className="spreadsheet-grid overflow-hidden rounded-b-2xl">
           {visibleRows.map((row, ri) => {
             const rowSelected =
               selection.type === "row" && selection.row === ri;
@@ -837,9 +869,14 @@ function ColumnHeader(props: ColumnHeaderProps) {
 
   return (
     <div
-      className="relative shrink-0 border-b border-r border-soft-border"
+      className="relative shrink-0 cursor-pointer border-b border-r border-soft-border"
       style={{ width: col.width }}
       data-tutorial-id={`col-header-${col.key}`}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("input") || target.closest("button")) return;
+        onSelectColumn();
+      }}
     >
       <div
         className={cn(
@@ -859,7 +896,6 @@ function ColumnHeader(props: ColumnHeaderProps) {
               ? "bg-brand-50 text-brand-800"
               : "bg-[var(--header-bg)] text-slate-700 hover:bg-slate-100",
         )}
-        onClick={onSelectColumn}
         onDoubleClick={(e) => {
           if (!allowRename) return;
           e.stopPropagation();
@@ -913,13 +949,14 @@ function ColumnHeader(props: ColumnHeaderProps) {
 
       <div
         onMouseDown={startResize}
+        onClick={(e) => e.stopPropagation()}
         className="absolute right-0 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-brand-400/50"
         aria-hidden
       />
 
       {isFilterOpen && (
         <div
-          className="absolute left-0 top-full z-40 mt-1 w-56 animate-fadeIn rounded-lg border border-soft-border bg-white p-2 shadow-panel"
+          className="absolute left-0 top-full z-40 mt-1 w-56 animate-fadeIn rounded-2xl border border-soft-border bg-white/95 p-2 shadow-panel backdrop-blur-xl"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-1 pb-1">
@@ -928,7 +965,7 @@ function ColumnHeader(props: ColumnHeaderProps) {
             </span>
             <button
               type="button"
-              className="rounded p-1 hover:bg-slate-100"
+              className="rounded-lg p-1 hover:bg-slate-100"
               onClick={onCloseFilter}
               aria-label="Закрыть"
             >
@@ -938,7 +975,7 @@ function ColumnHeader(props: ColumnHeaderProps) {
           <button
             type="button"
             className={cn(
-              "block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100",
+              "block w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-100",
               currentFilterValue === null && "bg-slate-50 font-medium",
             )}
             onClick={() => onApplyFilter(null)}
@@ -954,7 +991,7 @@ function ColumnHeader(props: ColumnHeaderProps) {
                   type="button"
                   key={sv}
                   className={cn(
-                    "block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-brand-50",
+                    "block w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-brand-50",
                     active && "bg-brand-100 font-medium text-brand-800",
                   )}
                   onClick={() => onApplyFilter(v)}
@@ -1059,9 +1096,10 @@ function Cell(props: CellProps) {
       style={{ width }}
       className={cn(
         "relative flex h-9 shrink-0 cursor-cell items-center border-b border-r border-soft-border px-2 text-sm transition-[background-color,border-color,box-shadow,color] duration-150 ease-out",
+        !highlight && !selected && "hover:bg-slate-50/70",
         type === "number" ? "justify-end tabular-nums text-slate-800" : "justify-start text-slate-800",
         highlight && HIGHLIGHT_COLORS[highlight],
-        selected && !active && "bg-[var(--selection-bg)]",
+        selected && "bg-[var(--selection-bg)]",
         active && "z-10",
         locked && "text-slate-500",
       )}

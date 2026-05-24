@@ -33,19 +33,19 @@ const config: Config = {
           700: "#047857",
         },
         soft: {
-          bg: "#f7f9fc",
+          bg: "#f5f8fc",
           panel: "#ffffff",
-          border: "#bcc5d4",
-          muted: "#6b7280",
+          border: "#d7e0ee",
+          muted: "#64748b",
         },
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 1px 2px rgba(15,23,42,0.04), 0 4px 12px rgba(15,23,42,0.06)",
-        panel: "0 4px 20px rgba(15, 23, 42, 0.08)",
-        glow: "0 0 0 4px rgba(59, 130, 246, 0.15)",
+        soft: "0 1px 2px rgba(15,23,42,0.04), 0 12px 30px rgba(15,23,42,0.07)",
+        panel: "0 24px 70px rgba(15, 23, 42, 0.10)",
+        glow: "0 0 0 4px rgba(59, 130, 246, 0.16), 0 16px 40px rgba(37, 99, 235, 0.16)",
       },
       keyframes: {
         pulseRing: {

@@ -52,10 +52,10 @@ export function BudgetCalculator({
   const balanceZero = totals.balance === 0;
 
   return (
-    <div className="rounded-xl border border-soft-border bg-white p-3 shadow-soft">
+    <div className="rounded-2xl border border-white/70 bg-white/90 p-3 shadow-soft backdrop-blur-xl">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 text-brand-700">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-100">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100 shadow-sm">
             <Calculator className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -72,7 +72,7 @@ export function BudgetCalculator({
             data-tutorial-id="btn-calculate"
             onClick={onCalculate}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold shadow-md transition focusable",
+              "inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold shadow-md transition hover:-translate-y-0.5 focusable",
               hasCalculated
                 ? "bg-success-500 text-white hover:bg-success-600 shadow-success-500/20"
                 : "bg-brand-600 text-white hover:bg-brand-700 shadow-brand-500/20",
@@ -161,7 +161,7 @@ function ResultCard({
     bad: "bg-rose-100 text-rose-700",
   };
   return (
-    <div className={cn("flex items-start gap-2 rounded-xl border p-3", toneClasses[tone])}>
+    <div className={cn("flex items-start gap-2 rounded-2xl border p-3 shadow-sm", toneClasses[tone])}>
       <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", iconClasses[tone])}>
         {icon}
       </div>
