@@ -884,7 +884,7 @@ function ColumnHeader(props: ColumnHeaderProps) {
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
             autoFocus={renaming}
-            className="min-w-0 flex-1 rounded border border-brand-300 bg-white px-1 py-0.5 text-sm text-slate-900 outline-none ring-2 ring-brand-100"
+            className="min-w-0 flex-1 rounded-md border border-soft-border bg-white/80 px-1.5 py-0.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-1 focus:ring-slate-300 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:bg-slate-900 dark:focus:ring-slate-600"
           />
         ) : (
           <span className="truncate">{col.title}</span>
