@@ -21,7 +21,6 @@ import { filterRows as filterFn, sortRows as sortFn } from "@/engine/sortFilter"
 interface ToolbarProps {
   state: SpreadsheetState;
   dispatch: (a: SpreadsheetAction) => void;
-  
   onResetTask: () => void;
 }
 
@@ -67,7 +66,6 @@ export function Toolbar({ state, dispatch, onResetTask }: ToolbarProps) {
     dispatch({ type: "highlightCells", addresses, color: null });
   };
 
-  
   const activeColKey = (() => {
     if (selection.type === "column") return columns[selection.col]?.key ?? null;
     if (selection.type === "cell") return columns[selection.col]?.key ?? null;

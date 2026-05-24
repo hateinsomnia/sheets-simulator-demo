@@ -21,11 +21,8 @@ interface TaskPanelProps {
   isStepComplete: boolean;
   isLessonComplete: boolean;
   isLastLesson: boolean;
-  
   demoActive: boolean;
-  
   feedback: { kind: "ok" | "warn"; text: string } | null;
-  
   selectedOptionId: string | null;
   onSelectOption: (id: string) => void;
   onShowDemo: () => void;
@@ -37,7 +34,6 @@ interface TaskPanelProps {
   onPrevLesson: () => void;
   onNextLesson: () => void;
   onFinish: () => void;
-  
   hintText: string | null;
 }
 

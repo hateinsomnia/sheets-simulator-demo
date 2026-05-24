@@ -141,13 +141,3 @@ function ConceptCard({
   );
 }
 
-function Step({ n, text }: { n: number; text: string }) {
-  return (
-    <li className="flex gap-3">
-      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
-        {n}
-      </span>
-      <span className="text-sm text-slate-700">{text}</span>
-    </li>
-  );
-}

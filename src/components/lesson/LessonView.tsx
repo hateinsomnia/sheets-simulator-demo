@@ -23,30 +23,25 @@ interface LessonViewProps {
 }
 
 export function LessonView({ onBackToIntro }: LessonViewProps) {
-  
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const lesson: Lesson = lessons[currentLessonIndex];
 
-  
   const [state, dispatch] = useReducer(
     spreadsheetReducer,
     lesson,
     (l) => createInitialState(l.columns, l.rows, l.lockedColumns ?? []),
   );
 
-  
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepCompletedMap, setStepCompletedMap] = useState<Record<string, boolean>>({});
   const [completedLessons, setCompletedLessons] = useState<number[]>([]);
 
-  
   const [demoActive, setDemoActive] = useState(false);
-  const [demoTargetsKey, setDemoTargetsKey] = useState(0); 
+  const [demoTargetsKey, setDemoTargetsKey] = useState(0);
   const [feedback, setFeedback] = useState<{ kind: "ok" | "warn"; text: string } | null>(null);
   const [hintText, setHintText] = useState<string | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<null | { kind: "lesson" | "course" }>(null);
-  
 
   const [hasCalculated, setHasCalculated] = useState(false);
 
@@ -58,9 +53,12 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
   );
   const isLastLesson = currentLessonIndex === lessons.length - 1;
 
-  
-  
-  
+  const demoTimerRef = useRef<number | null>(null);
+  const demoSnapshotRef = useRef<{
+    highlights: typeof state.highlights;
+    selection: typeof state.selection;
+  } | null>(null);
+
   useEffect(() => {
     dispatch({
       type: "loadDataset",
@@ -68,24 +66,26 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
       rows: lesson.rows,
       lockedColumns: lesson.lockedColumns ?? [],
     });
+    if (demoTimerRef.current) {
+      window.clearTimeout(demoTimerRef.current);
+      demoTimerRef.current = null;
+    }
+    demoSnapshotRef.current = null;
     setFeedback(null);
     setHintText(null);
     setDemoActive(false);
     setSelectedOptionId(null);
     setHasCalculated(false);
-    
-    
   }, [lesson]);
 
-  
-  
-  
-  
-  const demoTimerRef = useRef<number | null>(null);
-  const demoSnapshotRef = useRef<{
-    highlights: typeof state.highlights;
-    selection: typeof state.selection;
-  } | null>(null);
+  useEffect(() => {
+    if (demoTimerRef.current) {
+      window.clearTimeout(demoTimerRef.current);
+      demoTimerRef.current = null;
+    }
+    demoSnapshotRef.current = null;
+    setDemoActive(false);
+  }, [currentStepIndex]);
 
   const startDemo = useCallback(() => {
     if (demoActive) return;
@@ -96,16 +96,16 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
     const sd = step.demo.spreadsheetDemo;
     if (sd) {
-      
+      // Демо временно меняет подсветку/выделение, поэтому сохраняем состояние для восстановления после таймера.
       demoSnapshotRef.current = {
         highlights: { ...state.highlights },
         selection: state.selection,
       };
-      
+
       if (sd.cells && sd.color) {
         dispatch({ type: "highlightCells", addresses: sd.cells, color: sd.color });
       }
-      
+
       if (sd.rowIds && sd.color) {
         const idxs = sd.rowIds
           .map((id) => lesson.rows.findIndex((r) => r.id === id))
@@ -114,7 +114,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
           dispatch({ type: "selectRow", row: rowIdx });
         });
       }
-      
+
       if (sd.colKeys && sd.color) {
         const cidxs = sd.colKeys
           .map((k) => lesson.columns.findIndex((c) => c.key === k))
@@ -127,14 +127,11 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
 
     if (demoTimerRef.current) window.clearTimeout(demoTimerRef.current);
     demoTimerRef.current = window.setTimeout(() => {
-      
-      
       const snap = demoSnapshotRef.current;
       if (snap) {
         dispatch({ type: "clearHighlights" });
         const entries = Object.entries(snap.highlights);
         if (entries.length > 0) {
-          
           for (const [k, color] of entries) {
             const [rowId, colKey] = k.split("|");
             if (color) {
@@ -160,9 +157,6 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     };
   }, []);
 
-  
-  
-  
   const handleShowHint = useCallback(() => {
     setHintText(step.hint);
   }, [step]);
@@ -172,7 +166,7 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     setFeedback(null);
     setSelectedOptionId(null);
     setHasCalculated(false);
-    
+
     setStepCompletedMap((prev) => {
       const next = { ...prev };
       delete next[stepCompleteKey];
@@ -221,7 +215,6 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     (idx: number) => {
       if (idx === currentLessonIndex) return;
       setCurrentLessonIndex(idx);
-      
       setCurrentStepIndex(0);
     },
     [currentLessonIndex],
@@ -259,10 +252,6 @@ export function LessonView({ onBackToIntro }: LessonViewProps) {
     setCompletedLessons([]);
   }, []);
 
-  
-  
-  
-  
   const overlayTargets = useMemo(() => {
     void demoTargetsKey;
     if (!demoActive) return [];

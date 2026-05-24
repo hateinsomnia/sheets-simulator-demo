@@ -7,11 +7,8 @@ import type { Lesson } from "@/lessons/types";
 interface ProgressBarProps {
   lessons: Lesson[];
   currentLessonIndex: number;
-  
   currentStepIndex: number;
-  
   currentStepsCount: number;
-  
   completedLessons: number[];
   onJumpToLesson: (index: number) => void;
 }

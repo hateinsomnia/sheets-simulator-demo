@@ -79,6 +79,7 @@ function snapshot(state: SpreadsheetState): SpreadsheetSnapshot {
     sort: state.sort,
     filter: state.filter,
     highlights: state.highlights,
+    // Не сохраняем активный инпут в undo/redo: история должна восстанавливать данные, а не UI-фокус.
     editing: null,
     lockedColumns: state.lockedColumns,
   };
@@ -89,6 +90,7 @@ function withHistory(prev: SpreadsheetState, next: SpreadsheetState): Spreadshee
   return {
     ...next,
     editing: null,
+    // Держим последние 50 снимков, чтобы история не росла бесконечно при частых правках ячеек.
     past: [...prev.past.slice(-49), snapshot(prev)],
     future: [],
   };
@@ -118,7 +120,6 @@ export function spreadsheetReducer(
       };
     }
     case "selectCell": {
-      
       if (action.extend && state.selection.type !== "none") {
         const sel = state.selection;
         let anchorRow = action.row;
@@ -171,11 +172,17 @@ export function spreadsheetReducer(
       if (state.lockedColumns.includes(action.colKey)) {
         return { ...state, editing: null };
       }
+      let changed = false;
       const newRows = state.rows.map((row) =>
         row.id === action.rowId
-          ? { ...row, values: { ...row.values, [action.colKey]: action.value } }
+          ? (() => {
+              if (row.values[action.colKey] === action.value) return row;
+              changed = true;
+              return { ...row, values: { ...row.values, [action.colKey]: action.value } };
+            })()
           : row,
       );
+      if (!changed) return { ...state, editing: null };
       return withHistory(state, { ...state, rows: newRows, editing: null });
     }
     case "setCells": {
@@ -183,6 +190,7 @@ export function spreadsheetReducer(
       const updateMap = new Map<string, CellValue>();
       for (const update of action.updates) {
         if (!locked.has(update.colKey)) {
+          // Ключ rowId|colKey позволяет быстро сопоставлять пачку clipboard/fill-обновлений с текущими строками.
           updateMap.set(highlightKey(update.rowId, update.colKey), update.value);
         }
       }
@@ -192,32 +200,42 @@ export function spreadsheetReducer(
         const values = { ...row.values };
         for (const col of state.columns) {
           const k = highlightKey(row.id, col.key);
-          if (updateMap.has(k)) {
+          if (updateMap.has(k) && values[col.key] !== updateMap.get(k)) {
             values[col.key] = updateMap.get(k) ?? null;
             changed = true;
           }
         }
         return changed ? { ...row, values } : row;
       });
+      if (state.rows.every((row, i) => row === newRows[i])) return { ...state, editing: null };
       return withHistory(state, { ...state, rows: newRows, editing: null });
     }
     case "cancelEdit":
       return { ...state, editing: null };
 
     case "setSort":
+      if (state.sort.colKey === action.colKey && state.sort.direction === action.direction) return state;
       return withHistory(state, {
         ...state,
         sort: { colKey: action.colKey, direction: action.direction },
       });
     case "setFilter":
+      if (
+        state.filter.colKey === action.colKey &&
+        JSON.stringify(state.filter.predicate) === JSON.stringify(action.predicate)
+      ) {
+        return state;
+      }
       return withHistory(state, {
         ...state,
         filter: { colKey: action.colKey, predicate: action.predicate },
       });
     case "setColumnWidth": {
+      const clamped = Math.max(60, Math.min(640, action.width));
       const newCols = state.columns.map((c) =>
-        c.key === action.colKey ? { ...c, width: Math.max(60, action.width) } : c,
+        c.key === action.colKey ? { ...c, width: clamped } : c,
       );
+      if (state.columns.every((c, i) => c === newCols[i])) return state;
       return withHistory(state, { ...state, columns: newCols });
     }
     case "renameColumn": {
@@ -279,17 +297,28 @@ export function spreadsheetReducer(
 
     case "highlightCells": {
       const next = { ...state.highlights };
+      let changed = false;
       for (const a of action.addresses) {
         const k = highlightKey(a.rowId, a.colKey);
-        if (action.color === null) delete next[k];
-        else next[k] = action.color;
+        if (action.color === null) {
+          if (k in next) {
+            delete next[k];
+            changed = true;
+          }
+        } else if (next[k] !== action.color) {
+          next[k] = action.color;
+          changed = true;
+        }
       }
+      if (!changed) return state;
       return withHistory(state, { ...state, highlights: next });
     }
     case "clearHighlights":
+      if (Object.keys(state.highlights).length === 0) return state;
       return withHistory(state, { ...state, highlights: {} });
 
     case "loadDataset":
+      // Смена урока загружает новый датасет и намеренно сбрасывает историю предыдущей таблицы.
       return {
         ...state,
         columns: action.columns,

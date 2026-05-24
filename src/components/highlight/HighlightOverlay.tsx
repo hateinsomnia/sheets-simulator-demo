@@ -5,7 +5,6 @@ import type { HighlightTarget } from "@/lessons/types";
 
 interface HighlightOverlayProps {
   targets: HighlightTarget[];
-  
   blocking?: boolean;
 }
 
@@ -45,7 +44,7 @@ export function HighlightOverlay({ targets, blocking = false }: HighlightOverlay
     const onResize = () => compute();
     window.addEventListener("resize", onResize);
     window.addEventListener("scroll", onResize, true);
-    const id = window.setInterval(compute, 400); 
+    const id = window.setInterval(compute, 400);
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onResize, true);
@@ -92,14 +91,11 @@ function resolveTarget(t: HighlightTarget): Element | null {
     return document.querySelector(`[data-tutorial-id='row-header-${t.rowIndex}']`);
   }
   if (t.kind === "cell") {
-    
-    
-    
     const grid = document.querySelector("[role='grid']");
     if (!grid) return null;
     const rowEl = grid.querySelector(`[role='row'][aria-rowindex='${t.rowIndex + 1}']`);
     if (!rowEl) return null;
-    
+
     const cells = rowEl.querySelectorAll("[role='gridcell']");
     return cells[t.colIndex] ?? null;
   }

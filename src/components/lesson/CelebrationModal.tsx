@@ -5,10 +5,8 @@ import { ArrowRight, Sparkles, Trophy } from "lucide-react";
 
 interface CelebrationModalProps {
   open: boolean;
-  
   kind: "lesson" | "course";
   lessonTitle?: string;
-  
   totalLessons?: number;
   onContinue: () => void;
   onRestart?: () => void;

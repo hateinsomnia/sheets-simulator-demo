@@ -182,6 +182,7 @@ function toNumber(v: unknown): number | null {
   if (typeof v === "string") {
     const trimmed = v.trim();
     if (trimmed === "") return null;
+    // Поддерживаем пользовательский ввод с пробелами-разделителями и десятичной запятой.
     const n = Number(trimmed.replace(/\s/g, "").replace(",", "."));
     return Number.isFinite(n) ? n : null;
   }

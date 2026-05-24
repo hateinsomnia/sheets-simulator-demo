@@ -11,7 +11,7 @@ export const lesson1: Lesson = {
     "Так в школьном буфете считают, сколько чего продали за неделю. Чтобы быстро найти нужное число, важно понимать, где колонка, а где строка.",
   columns: bufetColumns,
   rows: bufetRows,
-  lockedColumns: ["day"], 
+  lockedColumns: ["day"],
   steps: [
     {
       id: "s1-col",

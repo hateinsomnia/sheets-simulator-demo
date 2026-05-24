@@ -1,26 +1,17 @@
-
-
 export type CellValue = string | number | null;
 
 export type ColumnType = "text" | "number";
 
 export interface ColumnDef {
-  
   key: string;
-  
   title: string;
-  
   type: ColumnType;
-  
   width: number;
-  
   unit?: string;
 }
 
 export interface RowData {
-  
   id: string;
-  
   values: Record<string, CellValue>;
 }
 
@@ -66,16 +57,12 @@ export type CellHighlight = "yellow" | "green" | "red" | "blue" | null;
 export interface SpreadsheetSnapshot {
   columns: ColumnDef[];
   rows: RowData[];
-  
   initialRows: RowData[];
   selection: SelectionKind;
   sort: SortState;
   filter: FilterState;
-  
   highlights: Record<string, CellHighlight>;
-  
   editing: CellAddress | null;
-  
   lockedColumns: string[];
 }
 

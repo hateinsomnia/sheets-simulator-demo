@@ -39,7 +39,6 @@ const MAX_NUMBER_CELL_VALUE = 1_000_000;
 export function Spreadsheet({ state, dispatch, allowColumnRename = false }: SpreadsheetProps) {
   const { columns, rows, selection, sort, filter, highlights, editing } = state;
 
-  
   const visibleRows = useMemo(() => {
     const filterCol = columns.find((c) => c.key === filter.colKey);
     const sortCol = columns.find((c) => c.key === sort.colKey);
@@ -60,7 +59,6 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
     return () => window.clearTimeout(id);
   }, [clipboardStatus]);
 
-  
   const draggingRef = useRef(false);
   const fillDragRef = useRef<{ r1: number; r2: number; c1: number; c2: number } | null>(null);
   const fillTargetRef = useRef<{ row: number; col: number } | null>(null);
@@ -74,8 +72,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
       } else {
         dispatch({ type: "selectCell", row, col });
       }
-      
-      
+
       containerRef.current?.focus({ preventScroll: true });
     },
     [dispatch],
@@ -89,13 +86,12 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
         return;
       }
       if (!draggingRef.current) return;
-      
+
       dispatch({ type: "selectCell", row, col, extend: true });
     },
     [dispatch],
   );
 
-  
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const selectionText = useCallback(() => {
@@ -132,6 +128,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
   const pasteText = useCallback((text: string) => {
     const anchor = selectionAnchor(selection);
     if (!anchor) return;
+    // Буфер из Excel/Sheets приходит как TSV; CRLF нормализуем, чтобы Windows-вставка не давала лишние строки.
     const rawRows = text.replace(/\r/g, "").split("\n");
     if (rawRows[rawRows.length - 1] === "") rawRows.pop();
     const matrix = rawRows.map((line) => line.split("\t"));
@@ -177,6 +174,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
     setFillPreview(null);
     if (!source || !target) return;
     const updates: Array<{ rowId: string; colKey: string; value: CellValue }> = [];
+    // Автозаполнение расширяем только вниз или вправо — так проще сохранить предсказуемую серию значений.
     if (target.row > source.r2) {
       for (let c = source.c1; c <= source.c2; c++) {
         const column = columns[c];
@@ -282,7 +280,6 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
         anchorRow = selection.range.anchorRow;
         anchorCol = selection.range.anchorCol;
       } else {
-        
         dispatch({ type: "selectCell", row: 0, col: 0 });
         return;
       }
@@ -302,7 +299,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (editing) return; 
+      if (editing) return;
       const key = e.key.toLowerCase();
       if (e.ctrlKey || e.metaKey) {
         if (isUndoShortcut(e)) {
@@ -377,7 +374,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
           if (selection.type === "cell") {
             const row = visibleRows[selection.row];
             const col = columns[selection.col];
-            if (row && col) {
+            if (row && col && !state.lockedColumns.includes(col.key)) {
               e.preventDefault();
               setEditSeed(null);
               dispatch({ type: "startEdit", rowId: row.id, colKey: col.key });
@@ -418,7 +415,6 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
     return () => window.removeEventListener("keydown", handleWindowKeyDown);
   }, [dispatch]);
 
-  
   const [openFilterCol, setOpenFilterCol] = useState<string | null>(null);
 
   return (
@@ -493,7 +489,7 @@ export function Spreadsheet({ state, dispatch, allowColumnRename = false }: Spre
                 />
                 {columns.map((col, ci) => {
                   const value = row.values[col.key] ?? null;
-                  const selected = isCellSelected(selection, ri, ci, totalRows, totalCols);
+                  const selected = isCellSelected(selection, ri, ci);
                   const active = isCellActive(selection, ri, ci);
                   const selectionEdges = selected
                     ? getSelectionEdges(selection, ri, ci, totalRows, totalCols)
@@ -697,6 +693,7 @@ function parseClipboardValue(raw: string, col: ColumnDef): CellValue {
   if (col.type !== "number") return raw;
   const normalized = raw.replace(/\s/g, "").replace(",", ".");
   const n = Number(normalized);
+  // Если число разобрать нельзя, оставляем исходный текст: пользователь увидит проблему в ячейке.
   return Number.isFinite(n) ? clampNumberCellValue(n) : raw;
 }
 
@@ -707,6 +704,7 @@ function clampNumberCellValue(value: number): number {
 function nextSeriesValue(values: CellValue[], index: number): CellValue {
   const filled = values.filter((v) => v !== null && v !== "");
   if (filled.length === 0) return null;
+  // Сначала проверяем даты, затем числа; текстовые значения повторяем циклом как в простом fill handle.
   const dates = filled.map((v) => parseSeriesDate(String(v)));
   if (dates.every((d) => d !== null)) {
     const last = dates[dates.length - 1] as Date;
@@ -752,6 +750,7 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
 
 function isUndoShortcut(e: KeyboardEvent | React.KeyboardEvent): boolean {
   const key = e.key.toLowerCase();
+  // e.code нужен для раскладок вроде русской, где Ctrl+Z приходит как Ctrl+я.
   return key === "z" || e.code === "KeyZ";
 }
 

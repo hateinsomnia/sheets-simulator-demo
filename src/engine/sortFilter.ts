@@ -11,11 +11,13 @@ export function sortRows(
   direction: SortDirection,
 ): RowData[] {
   if (!column || !direction) return rows;
+  // Сортировка используется для visibleRows, поэтому не мутируем исходный state.rows.
   const copy = [...rows];
   copy.sort((a, b) => {
     const av = a.values[column.key];
     const bv = b.values[column.key];
-    
+
+    // Пустые значения всегда уводим вниз, чтобы они не мешали учебным сравнениям.
     if (av === null || av === undefined) return 1;
     if (bv === null || bv === undefined) return -1;
     if (column.type === "number") {

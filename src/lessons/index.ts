@@ -7,7 +7,3 @@ import { lesson5 } from "./lesson5-filter";
 import { lesson6 } from "./lesson6-budget";
 
 export const lessons: Lesson[] = [lesson1, lesson2, lesson3, lesson4, lesson5, lesson6];
-
-export function getLessonByIndex(idx: number): Lesson | undefined {
-  return lessons[idx];
-}

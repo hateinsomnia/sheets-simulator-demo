@@ -5,11 +5,7 @@ import { filterRows, sortRows } from "@/engine/sortFilter";
 
 export interface CheckContext {
   state: SpreadsheetState;
-  
-
   selectedOptionId: string | null;
-  
-
   hasCalculated?: boolean;
 }
 
@@ -88,7 +84,7 @@ export function runCheck(check: LessonCheck, ctx: CheckContext): CheckResult {
           };
         }
       }
-      
+
       for (const [k, color] of Object.entries(state.highlights)) {
         if (color === check.color && !need.includes(k)) {
           return { ok: false, reason: "Покрашено лишнее. Сбрось лишние ячейки и оставь только нужные." };

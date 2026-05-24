@@ -12,8 +12,6 @@ export function isCellSelected(
   selection: SelectionKind,
   row: number,
   col: number,
-  totalRows: number,
-  totalCols: number,
 ): boolean {
   switch (selection.type) {
     case "none":
@@ -28,11 +26,6 @@ export function isCellSelected(
       const { r1, r2, c1, c2 } = normalizeRange(selection.range);
       return row >= r1 && row <= r2 && col >= c1 && col <= c2;
     }
-    default:
-      
-      void totalRows;
-      void totalCols;
-      return false;
   }
 }
 
@@ -63,7 +56,7 @@ export function selectionToCells(
     for (let r = 0; r < totalRows; r++) list.push({ row: r, col: sel.col });
     return list;
   }
-  
+
   const { r1, r2, c1, c2 } = normalizeRange(sel.range);
   const list: Array<{ row: number; col: number }> = [];
   for (let r = r1; r <= r2; r++) {
@@ -75,7 +68,6 @@ export function selectionToCells(
 }
 
 export function columnLetter(index: number): string {
-  
   let n = index;
   let s = "";
   while (n >= 0) {
